@@ -1,0 +1,76 @@
+{
+  "id": "deployment-artifacts",
+  "order": 10,
+  "title": "Package an agent for AgentCore or another cloud",
+  "summary": "Generate a platform-specific container and detailed runbook, verify ARM64 for AgentCore, and preview isolated local testing.",
+  "category": "Delivery",
+  "duration": "4 minutes + optional container test",
+  "prerequisites": [
+    "Complete the repository installation: Node.js 22+, npm ci, then npm run build.",
+    "Use Bash or another POSIX shell on macOS/Linux; use WSL on Windows. Run commands from the cloned repository root.",
+    "The checked-in verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
+  ],
+  "outcome": "An AgentCore artifact set, platform constraints, and a reviewed local test plan without cloud resources.",
+  "verification": {
+    "scope": "Artifact generation, platform inspection, ARM64 assertions, prerequisites, deployment/test previews, and help are executed locally.",
+    "limitations": [
+      "No cloud account, model API call, registry push, or billable deployment is performed.",
+      "The optional real container test is not part of this walkthrough’s automatic verification. CI has a separate real Docker test; that does not certify your machine or cloud account.",
+      "Cloud Run and Azure requirements are inspected in the platform catalog; their actual deployments remain account-dependent."
+    ]
+  },
+  "steps": [
+    {
+      "title": "Choose API credentials by reference and select AgentCore",
+      "body": "Cloud containers cannot reuse a desktop subscription session. This sample references OPENAI_API_KEY; no secret is written or read during generation. Select an API/model you are entitled to use before any real deployment.",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/deployment-artifacts\nnode dist/cli.js init deployment-artifacts --directory .studio/tutorials\nnode dist/cli.js connections add hosted-api \"$INSTRILO_PROJECT\" --file examples/quickstarts/delivery/openai.json\nnode dist/cli.js connections use runtime hosted-api \"$INSTRILO_PROJECT\"\nnode dist/cli.js connections use judge hosted-api \"$INSTRILO_PROJECT\"\nnode dist/cli.js config set delivery.target aws-agentcore \"$INSTRILO_PROJECT\"\nnode dist/cli.js build \"$INSTRILO_PROJECT\"",
+      "expected": "generated/ contains executable source, Dockerfile, deployment-plan.json, DEPLOYMENT.md, AgentCore runtime configuration and IAM templates."
+    },
+    {
+      "title": "Check the actual platform contract and generated architecture",
+      "body": "The catalog also explains Cloud Run and Azure Container Apps. AgentCore uses linux/arm64 and port 8080 with /ping and /invocations; the generated cloud build script selects its architecture explicitly.",
+      "code": "node dist/cli.js deployment platforms > \"$INSTRILO_PROJECT/platforms.json\"\nnode dist/cli.js deployment guide \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/platform-guide.txt\"\nnode examples/quickstarts/delivery/verify.mjs platform-artifacts \"$INSTRILO_PROJECT\"",
+      "expected": "Assertions confirm ARM64 for AgentCore, AMD64 for Cloud Run/Azure, port 8080, and the expected generated files. Read generated/DEPLOYMENT.md for step-by-step identity, registry, build, deploy, invocation and cleanup instructions."
+    },
+    {
+      "title": "Preview dependencies and isolated testing",
+      "body": "These previews do not install an engine or build an image. A later executed test builds the real generated runtime with local model/identity fixtures and retains JSON/Markdown evidence. It does not validate cloud IAM or model answer quality.",
+      "code": "node dist/cli.js deployment prerequisites \"$INSTRILO_PROJECT\" --engine docker > \"$INSTRILO_PROJECT/prerequisites.json\"\nnode dist/cli.js deployment test \"$INSTRILO_PROJECT\" --engine docker > \"$INSTRILO_PROJECT/container-test-plan.json\"\nnode dist/cli.js deploy \"$INSTRILO_PROJECT\"\nnode examples/quickstarts/delivery/verify.mjs container-plan \"$INSTRILO_PROJECT\"\nnode dist/cli.js deployment engine install --help\nnode dist/cli.js deployment cleanup --help",
+      "expected": "The saved plan says execute:false and linux/arm64. It lists local dependencies, mocked services, test steps and the limitations of the checks."
+    },
+    {
+      "title": "Optionally execute the reviewed local container test",
+      "body": "Requires a supported local Docker daemon, network access for public base images/npm dependencies, disk space, and ARM64 support or emulation. Review engine installation/start plans first if Docker is missing. The test can download images; it does not deploy cloud resources. Automatic cleanup removes test-owned containers/networks/images; shared base layers and build caches remain.",
+      "manualCode": "node dist/cli.js deployment engine status docker\nnode dist/cli.js deployment engine install docker\n# Only if you reviewed and accept the supported install plan:\n# node dist/cli.js deployment engine install docker --execute\nnode dist/cli.js deployment test .studio/tutorials/deployment-artifacts --engine docker --execute\nnode dist/cli.js deployment reports .studio/tutorials/deployment-artifacts",
+      "expected": "A completed run retains report.json and report.md under the printed .instrilo/deployment-tests run directory. Inspect passed/failed checks and cleanup results. Use the report’s exact run ID with deployment cleanup if cleanup is incomplete."
+    },
+    {
+      "title": "Deploy only after following the generated platform runbook",
+      "body": "Requires your real AWS account, execution IAM role, region, ECR access, configured model secret and reviewed resource names. The generated DEPLOYMENT.md explains each dependency and command. Review its IAM and secret templates and supply its named environment variables before this final action. AWS resources and model use can incur charges. For Cloud Run or Azure, select that target, configure inbound JWT, rebuild and follow its newly generated runbook instead.",
+      "manualCode": "# After completing every prerequisite in the generated DEPLOYMENT.md:\nnode dist/cli.js deploy .studio/tutorials/deployment-artifacts --execute",
+      "expected": "The reviewed generated script builds/pushes the correct image architecture and submits the platform configuration, or fails on an unmet prerequisite. Cloud access, service quotas, identity and live behavior require validation in your account."
+    }
+  ],
+  "next": [
+    {
+      "label": "Deployment documentation and limitations",
+      "url": "https://github.com/nimeshbuilds/instrilo/blob/main/docs/DEPLOYMENT.md"
+    },
+    {
+      "label": "Continuous integration checks",
+      "url": "https://github.com/nimeshbuilds/instrilo/actions"
+    }
+  ],
+  "troubleshooting": [
+    "Use a fresh tutorial project name if init says the directory already exists. The commands create files and reports that deliberately refuse overwriting existing results.",
+    "Read the printed error and instrilo help --all before retrying. A failed assertion means the observed result differs from this guide.",
+    "An AMD64-only machine needs ARM64 emulation for AgentCore tests. A preview succeeding does not mean image execution is available.",
+    "Remote Docker contexts are rejected for local test safety. Use an explicitly local engine endpoint.",
+    "Cloud Run and Azure HTTP agents need configured inbound JWT. Use instrilo explain gateways before selecting those targets."
+  ],
+  "cleanup": [
+    "The tutorial creates only its named project under .studio/tutorials. Keep reports if useful; remove that project directory when you no longer need it.",
+    "Preview steps create no container or cloud resources. If you execute a test, inspect its cleanup section; use its exact recorded ID for any retry.",
+    "Dependency cleanup is separately reviewed and ownership-checked. Never substitute a global prune command; preexisting engines/VMs and shared resources are preserved."
+  ]
+}

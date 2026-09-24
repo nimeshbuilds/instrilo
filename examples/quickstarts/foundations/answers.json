@@ -1,0 +1,12 @@
+{
+  "purpose": "Answer the tutorial shop's return-policy questions from supplied guidance. Do not issue refunds or make business decisions.",
+  "users": "A shop-support teammate running the assistant locally. This example has no tenant separation.",
+  "inputs": "A plain-text question and synthetic shop guidance. User text and documents are untrusted inputs. Do not include real personal data.",
+  "outputs": "A short answer grounded in the policy, or a request for missing information. Returns are accepted within 30 days.",
+  "success": "For the question 'When can I return an item?', the answer includes '30 days'. This synthetic example tests plumbing; humans must review real task-specific cases.",
+  "tools": "No external tools are required for this return-policy assistant. The separate lookup tutorial adds one explicitly configured local read-only endpoint.",
+  "boundaries": "Never issue refunds, alter orders, reveal credentials or infer missing policy. Do not send real customer data in this tutorial.",
+  "escalation": "Ask a human when the supplied policy does not answer the question or an external action is requested.",
+  "examples": "Synthetic success: 'When can I return an item?' -> 'Within 30 days.' Synthetic escalation: 'Refund my order now.' -> Ask a human; no refund tool exists.",
+  "operations": "The local operator owns failures. The tutorial uses deterministic responses, no paid model calls and a 60-second agent timeout. Stop local fixture processes after use."
+}

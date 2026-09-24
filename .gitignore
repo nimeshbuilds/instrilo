@@ -12,3 +12,5 @@ __pycache__/
 *.log
 *.tsbuildinfo
 *.tgz
+_site/
+website/verification.json

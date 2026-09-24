@@ -1,0 +1,64 @@
+{
+  "id": "subscription-setup",
+  "order": 6,
+  "title": "Connect an existing AI subscription",
+  "summary": "Review official CLI installation and learn the exact login and connection flow for Claude, Codex, or Grok.",
+  "category": "Connections",
+  "duration": "5 minutes + provider login",
+  "prerequisites": [
+    "Complete the repository installation: Node.js 22+, npm ci, then npm run build.",
+    "Use Bash or another POSIX shell on macOS/Linux; use WSL on Windows. Run commands from the cloned repository root.",
+    "The checked-in verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
+  ],
+  "outcome": "Reviewed installation plans and a project ready for your chosen provider.",
+  "verification": {
+    "scope": "The plans, help commands, and offline project creation run automatically. Provider-owned installation and login are separate manual steps.",
+    "limitations": [
+      "No real account is signed in by this walkthrough test.",
+      "A subscription does not grant interchangeable API credentials or permission to run its CLI in a hosted container.",
+      "Grok has no verified persistent auth-status command; successful login alone is not proof a model call will succeed."
+    ]
+  },
+  "steps": [
+    {
+      "title": "Read the workflow and create a local project",
+      "body": "The installed CLI stays under your user account. Instrilo uses official provider login; do not paste browser session tokens into your manifest.",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/subscription-setup\nnode dist/cli.js init subscription-setup --directory .studio/tutorials\nnode dist/cli.js explain subscriptions\nnode dist/cli.js setup --help\nnode dist/cli.js connect --help",
+      "expected": "The project is created in offline demo mode. Help explains installation consent, device login, roles, and connection choices."
+    },
+    {
+      "title": "Review all three install plans",
+      "body": "These commands only show the exact official npm package, destination, and registry. They do not download packages, start login, or call a model.",
+      "code": "node dist/cli.js auth install codex --plan > \"$INSTRILO_PROJECT/codex-plan.json\"\nnode dist/cli.js auth install claude --plan > \"$INSTRILO_PROJECT/claude-plan.json\"\nnode dist/cli.js auth install grok --plan > \"$INSTRILO_PROJECT/grok-plan.json\"\nnode examples/quickstarts/delivery/verify.mjs install-plans \"$INSTRILO_PROJECT\"",
+      "expected": "All three plans name their expected official package. Open the saved JSON files to inspect the destination and command."
+    },
+    {
+      "title": "Choose one provider and sign in",
+      "body": "Optional account step: choose ONE line below. The terminal asks before installation and starts that provider’s own login if needed. You need an eligible account, network access, and permission to install user-local npm packages. The walkthrough does not verify your account or provider allowance.",
+      "manualCode": "node dist/cli.js setup codex\n# Or: node dist/cli.js setup claude\n# Or: node dist/cli.js setup grok",
+      "expected": "The official tool completes sign-in, or prints an actionable account, dependency, or terminal requirement. Codex/Grok can use --device if their browser login is inconvenient; Claude has no verified device option."
+    },
+    {
+      "title": "Connect the role you want and make an explicit live check",
+      "body": "Optional account step: this example uses Codex. Substitute claude or grok consistently if you chose it. Connecting the builder leaves runtime/judge on demo until you select them too. Verification makes one bounded model request and can consume account allowance or API billing depending on provider credentials.",
+      "manualCode": "node dist/cli.js connect codex .studio/tutorials/subscription-setup --role builder\nnode dist/cli.js auth status codex\nnode dist/cli.js auth verify codex\n# Optional local native runtime or judge:\n# node dist/cli.js connect codex .studio/tutorials/subscription-setup --role runtime\n# node dist/cli.js connect claude .studio/tutorials/subscription-setup --role judge",
+      "expected": "connect saves the selected named connection. auth verify reports verified:true only when that live request returns the exact verification marker. Status alone does not verify quota or future billing."
+    }
+  ],
+  "next": [
+    {
+      "label": "Give the judge its own connection",
+      "url": "#evaluate-and-compare"
+    }
+  ],
+  "troubleshooting": [
+    "Use a fresh tutorial project name if init says the directory already exists. The commands create files and reports that deliberately refuse overwriting existing results.",
+    "Read the printed error and instrilo help --all before retrying. A failed assertion means the observed result differs from this guide.",
+    "If a CLI is missing, setup offers its reviewed installation. If the detected CLI is old, read the plan and update the provider tool before retrying.",
+    "To cancel login, press Ctrl+C. Do not copy login codes or session links into a public issue."
+  ],
+  "cleanup": [
+    "The tutorial creates only its named project under .studio/tutorials. Keep reports if useful; remove that project directory when you no longer need it.",
+    "This guide’s tested steps install nothing. Official provider credentials and previously installed tools remain yours; deleting the tutorial project does not sign you out."
+  ]
+}

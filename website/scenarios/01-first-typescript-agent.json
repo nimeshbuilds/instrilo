@@ -1,0 +1,68 @@
+{
+  "category": "Build & connect",
+  "duration": "5 minutes",
+  "prerequisites": [
+    "Complete the source installation on the start page: Node.js 22+, npm, Git, then npm ci and npm run build.",
+    "Use Bash on macOS/Linux or WSL, at the cloned repository root. Keep every step in the same terminal.",
+    "Use a fresh tutorial project name. If init/create says the project already exists, choose a new slug and update INSTRILO_PROJECT; do not delete work you want to keep."
+  ],
+  "next": [
+    {
+      "label": "Complete CLI reference",
+      "url": "https://github.com/nimeshbuilds/instrilo/blob/main/docs/CLI.md"
+    },
+    {
+      "label": "Inspect the tutorial fixtures and checks",
+      "url": "https://github.com/nimeshbuilds/instrilo/tree/main/examples/quickstarts/foundations"
+    }
+  ],
+  "id": "first-typescript-agent",
+  "order": 1,
+  "title": "Build your first local TypeScript agent",
+  "summary": "Start with product guidance, generate a complete project, and run it without a model account.",
+  "outcome": "A generated TypeScript runtime, a ten-question product brief and an observable offline result.",
+  "verification": {
+    "scope": "Every shown command creates, validates, builds, installs and executes a real generated native TypeScript project. The runtime deliberately uses the offline demo provider. The checked-in verify.mjs helper only reads saved JSON and asserts the expected results.",
+    "limitations": [
+      "The offline provider echoes your input. It does not reason about guidance or establish agent quality.",
+      "npm preparation downloads dependencies even though the agent makes no model calls."
+    ]
+  },
+  "steps": [
+    {
+      "title": "Create a local project",
+      "body": "This starts in explicit offline demonstration mode. No API key, subscription login or hosted model is needed.",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/first-typescript-agent\nnode dist/cli.js init first-typescript-agent --directory .studio/tutorials --language typescript\ntest -f \"$INSTRILO_PROJECT/agent-studio.yaml\"",
+      "expected": "The CLI prints the project path and “Offline demonstration mode”. The manifest exists."
+    },
+    {
+      "title": "Turn ten answers into a product brief",
+      "body": "The example answers define purpose, users, inputs, outputs, success, tools, boundaries, escalation, examples and operations. Open answers.json to adapt them. Interactive users can omit --answers to answer the same questions in the terminal.",
+      "code": "node dist/cli.js guidance create \"$INSTRILO_PROJECT/brief\" --answers examples/quickstarts/foundations/answers.json\nnode dist/cli.js config set guidanceDir ./brief \"$INSTRILO_PROJECT\"\nnode dist/cli.js guidance inspect \"$INSTRILO_PROJECT/brief\" > \"$INSTRILO_PROJECT/guidance-check.json\"\nnode examples/quickstarts/foundations/verify.mjs guidance \"$INSTRILO_PROJECT\"",
+      "expected": "AGENT-GUIDANCE.md is created and the assertion confirms all ten sections are present. Presence is not a human review of correctness."
+    },
+    {
+      "title": "Generate and prepare the runtime",
+      "body": "Build writes reviewable agent code and supporting artifacts. Prepare installs this generated project’s declared npm dependencies.",
+      "code": "node dist/cli.js validate \"$INSTRILO_PROJECT\"\nnode dist/cli.js build \"$INSTRILO_PROJECT\"\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"\ntest -f \"$INSTRILO_PROJECT/generated/agent.ts\"",
+      "expected": "Validation reports valid: true, build writes generated/agent.ts, and preparation finishes successfully."
+    },
+    {
+      "title": "Run and inspect the offline result",
+      "body": "An explicit assertion proves which mode ran. The demo prefix is intentional: it prevents an echo test from being mistaken for a useful model answer.",
+      "code": "node dist/cli.js run \"$INSTRILO_PROJECT\" --input 'When can I return an item?' > \"$INSTRILO_PROJECT/run.json\"\ncat \"$INSTRILO_PROJECT/run.json\"\nnode examples/quickstarts/foundations/verify.mjs offline-typescript \"$INSTRILO_PROJECT\"",
+      "expected": "The JSON output contains “[DEMO ONLY] When can I return an item?” and a model trace event."
+    },
+    {
+      "title": "Find every next action from the CLI",
+      "body": "The CLI includes its own manual and command reference. Move to the independent-connections walkthrough to replace the demo with a tested HTTP connection.",
+      "code": "node dist/cli.js explain --list\nnode dist/cli.js help run\nnode dist/cli.js help guidance",
+      "expected": "The offline manual index and complete help for run and guidance print successfully."
+    }
+  ],
+  "troubleshooting": [
+    "If preparation cannot reach npm/PyPI, fix registry/proxy access and repeat prepare; it does not require model credentials.",
+    "If the project already exists, inspect or keep it and choose a new tutorial slug. Do not rerun init over an existing manifest."
+  ],
+  "cleanup": "There is no background service in this walkthrough. Keep the project for experimentation; removing this exact tutorial directory later is optional."
+}

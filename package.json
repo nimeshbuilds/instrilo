@@ -17,7 +17,9 @@
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit",
     "docs:cli": "node scripts/generate-cli-docs.mjs",
-    "docs:check": "node scripts/generate-cli-docs.mjs --check"
+    "docs:check": "node scripts/generate-cli-docs.mjs --check",
+    "site:build": "node scripts/build-site.mjs",
+    "test:scenarios": "node scripts/test-scenarios.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -39,7 +41,7 @@
     "type": "git",
     "url": "git+https://github.com/nimeshbuilds/instrilo.git"
   },
-  "homepage": "https://github.com/nimeshbuilds/instrilo#readme",
+  "homepage": "https://nimeshbuilds.github.io/instrilo/",
   "bugs": {
     "url": "https://github.com/nimeshbuilds/instrilo/issues"
   },

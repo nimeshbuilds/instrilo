@@ -1,0 +1,84 @@
+{
+  "category": "Build & connect",
+  "duration": "10 minutes",
+  "prerequisites": [
+    "Complete the source installation on the start page: Node.js 22+, npm, Git, then npm ci and npm run build.",
+    "Use Bash on macOS/Linux or WSL, at the cloned repository root. Keep every step in the same terminal.",
+    "Use a fresh tutorial project name. If init/create says the project already exists, choose a new slug and update INSTRILO_PROJECT; do not delete work you want to keep."
+  ],
+  "next": [
+    {
+      "label": "Complete CLI reference",
+      "url": "https://github.com/nimeshbuilds/instrilo/blob/main/docs/CLI.md"
+    },
+    {
+      "label": "Inspect the tutorial fixtures and checks",
+      "url": "https://github.com/nimeshbuilds/instrilo/tree/main/examples/quickstarts/foundations"
+    }
+  ],
+  "id": "langgraph-agent",
+  "order": 5,
+  "title": "Move a working tool agent to LangGraph",
+  "summary": "Switch frameworks while retaining guidance, connections, tool contracts and observable behavior.",
+  "outcome": "A native tool agent and a real LangGraph StateGraph produce the same tested order answer with framework-specific traces.",
+  "verification": {
+    "scope": "The commands first run the native TypeScript agent, then safely regenerate and install the actual @langchain/langgraph package, execute its StateGraph and verify its model/tool node trace. The checked-in verify.mjs helper only reads saved JSON and asserts the expected results.",
+    "limitations": [
+      "The deterministic fixture checks integration behavior, not model intelligence or response quality.",
+      "No paid model account, real credentials or cloud resource is used. Package installation still needs registry access.",
+      "The model replies are deterministic; LangGraph itself is a real installed dependency and executes during verification.",
+      "The generated graph has no external durable checkpointer. It does not promise cross-process graph-state resume merely because it uses LangGraph."
+    ]
+  },
+  "steps": [
+    {
+      "title": "Create the project",
+      "body": "This starts from a known native configuration so you can observe the framework change clearly.",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/langgraph-agent\nnode dist/cli.js init langgraph-agent --directory .studio/tutorials\ntest -f \"$INSTRILO_PROJECT/agent-studio.yaml\"",
+      "expected": "The project starts with framework: native."
+    },
+    {
+      "title": "Start the named local demonstration service",
+      "body": "This checked-in helper runs on an available localhost port. It returns deterministic model replies and synthetic order data. It is a demonstration service, not a real LLM. The EXIT trap stops only its tracked process if a later command fails.",
+      "code": "node examples/quickstarts/foundations/fixture.mjs serve \"$INSTRILO_PROJECT/fixture.json\" > \"$INSTRILO_PROJECT/fixture.log\" 2>&1 &\nINSTRILO_FIXTURE_PID=$!\ntrap 'kill \"$INSTRILO_FIXTURE_PID\" 2>/dev/null || true' EXIT\nnode examples/quickstarts/foundations/fixture.mjs wait \"$INSTRILO_PROJECT/fixture.json\"\nnode examples/quickstarts/foundations/fixture.mjs files \"$INSTRILO_PROJECT/fixture.json\" \"$INSTRILO_PROJECT/connections\"\nexport INSTRILO_TUTORIAL_BEARER=tutorial-bearer",
+      "expected": "The helper prints “Local deterministic fixture is ready” and writes five JSON connection/tool documents containing its actual local port."
+    },
+    {
+      "title": "Connect the model route and the lookup tool",
+      "body": "The HTTP endpoint contains one synthetic order. The tool is read-only, has no required scopes and needs no approval in this local example. Real private data needs endpoint authentication and authorization appropriate to its users.",
+      "code": "node dist/cli.js connections add answering \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/connections/tool-runtime.json\"\nnode dist/cli.js connections use runtime answering \"$INSTRILO_PROJECT\"\nnode dist/cli.js tools add \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/connections/lookup-tool.json\"\nnode dist/cli.js tools list \"$INSTRILO_PROJECT\"\nnode dist/cli.js validate \"$INSTRILO_PROJECT\"",
+      "expected": "lookup_order is configured as a GET tool with a strict orderId schema. Project validation reports valid: true."
+    },
+    {
+      "title": "Run the native baseline",
+      "body": "Keep the baseline output so the framework change has an observable comparison.",
+      "code": "node dist/cli.js build \"$INSTRILO_PROJECT\"\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"\nnode dist/cli.js run \"$INSTRILO_PROJECT\" --input 'Where is order ORD-1042?' > \"$INSTRILO_PROJECT/native-run.json\"\nnode examples/quickstarts/foundations/verify.mjs native-baseline \"$INSTRILO_PROJECT\"",
+      "expected": "The native result records model, tool, model and the expected shipping answer."
+    },
+    {
+      "title": "Switch, review regeneration and install LangGraph",
+      "body": "Configuration changes make old builds stale. Regeneration previews the file changes; --overwrite applies safe regeneration and still refuses conflicting edits. Prepare installs the newly declared framework dependency.",
+      "code": "node dist/cli.js config set framework langgraph \"$INSTRILO_PROJECT\"\nnode dist/cli.js generation plan \"$INSTRILO_PROJECT\"\nnode dist/cli.js build \"$INSTRILO_PROJECT\" --overwrite\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"\nnode examples/quickstarts/foundations/verify.mjs graph-package \"$INSTRILO_PROJECT\"",
+      "expected": "Regeneration succeeds and the generated package declares @langchain/langgraph. Preparation resolves its real dependency."
+    },
+    {
+      "title": "Execute the graph and compare results",
+      "body": "The graph now runs model and tools nodes. It uses the same portable tool schema and gateway transport as the native runtime.",
+      "code": "node dist/cli.js run \"$INSTRILO_PROJECT\" --input 'Where is order ORD-1042?' > \"$INSTRILO_PROJECT/langgraph-run.json\"\ncat \"$INSTRILO_PROJECT/langgraph-run.json\"\nnode examples/quickstarts/foundations/verify.mjs graph-run \"$INSTRILO_PROJECT\"\nnode examples/quickstarts/foundations/fixture.mjs stats \"$INSTRILO_PROJECT/fixture.json\" > \"$INSTRILO_PROJECT/fixture-stats.json\"\nnode examples/quickstarts/foundations/verify.mjs graph-requests \"$INSTRILO_PROJECT\"",
+      "expected": "The graph returns the same answer, records langgraph.model, tool, langgraph.model, and the fixture has observed two lookups across both runs."
+    },
+    {
+      "title": "Stop the fixture you started",
+      "body": "Keep the generated project and evidence. Stop only this tutorial process; no broad process matching or machine cleanup is needed.",
+      "code": "kill \"$INSTRILO_FIXTURE_PID\"\nwait \"$INSTRILO_FIXTURE_PID\" || true\ntrap - EXIT\nprintf 'Tutorial fixture stopped. Project files are retained.\n'",
+      "expected": "The fixture stops and project files remain in .studio/tutorials."
+    }
+  ],
+  "troubleshooting": [
+    "If preparation cannot reach npm/PyPI, fix registry/proxy access and repeat prepare; it does not require model credentials.",
+    "If the project already exists, inspect or keep it and choose a new tutorial slug. Do not rerun init over an existing manifest.",
+    "A demo runtime cannot use LangGraph; configure a supported API/gateway runtime before switching, as this guide does.",
+    "If you edit generated source before switching, inspect generation plan conflicts rather than deleting your changes."
+  ],
+  "cleanup": "The final step stops the fixture. Both native-run.json and langgraph-run.json remain available to compare."
+}

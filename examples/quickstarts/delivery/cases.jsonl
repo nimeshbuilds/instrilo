@@ -1,0 +1,2 @@
+{"id":"billing-escalation","input":"A customer disputes their invoice. What next?","expected":"Escalate billing disputes to a human.","contains":["Escalate billing disputes"],"excludes":["Automatically refund"],"source":"synthetic","split":"development"}
+{"id":"ticket-reference","input":"What should the billing handoff contain?","expected":"Include the ticket reference and escalate billing disputes.","contains":["ticket reference"],"source":"synthetic","split":"development"}

@@ -11,7 +11,9 @@ A local CLI and web app for turning product guidance into an owned agent project
 
 Instrilo 0.2 is a source release with exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
 
-[CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
+[Website & ten practical quickstarts](https://nimeshbuilds.github.io/instrilo/) · [CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
+
+The quickstarts cover TypeScript, Python, separate model connections, HTTP tools, LangGraph, subscription setup, evaluations, human review, approvals/replay, and cloud packaging. Their published command blocks are executed in isolated workspaces before the documentation site is deployed. Each guide identifies local fixtures, expected results, and manual account-dependent steps; passing a tutorial is not a claim that every provider or cloud account has been verified. GitHub Pages hosts the documentation; the Instrilo app runs locally.
 
 ## Why Instrilo
 

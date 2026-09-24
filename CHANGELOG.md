@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Branded GitHub Pages documentation with ten practical walkthroughs, source-exact tested command blocks, expected results, troubleshooting, cleanup, and fingerprint-bound verification records. Pages publication is gated on running the walkthroughs.
 - Platform-specific deployment contracts and detailed prerequisite/runbooks for local, Docker, AgentCore, Cloud Run and Azure Container Apps; corrected Azure managed-identity bootstrap and platform architecture handling.
 - Optional Docker/Podman deployment contract tests with isolated fixture services, target-architecture checks, retained JSON/Markdown evidence, cancellation and ownership-checked cleanup.
 - Container engine inspection, reviewed platform setup/startup and explicit cleanup of owned dependencies, available through the comprehensive CLI and Code & delivery app workspace.

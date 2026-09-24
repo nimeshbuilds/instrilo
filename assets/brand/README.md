@@ -4,7 +4,7 @@
 
 Instrilo (in-STRILL-oh) takes its name from instructions becoming working systems. It is an open-source agent creation workbench by **nimeshbuilds**. The message is practical: turn product guidance into code you own, then inspect and evaluate its behavior.
 
-The tagline states the product direction. Version 0.1 has evaluation reports and build fingerprints; requirement-linked release gates, replay, and safe code-preserving upgrades are planned in the [roadmap](../../docs/ROADMAP.md).
+The tagline states the product direction. Version 0.2 includes evaluation reports, build fingerprints, requirement-linked release gates, supported local replay, and code-preserving regeneration. The [roadmap](../../docs/ROADMAP.md) and [verification record](../../docs/VERIFICATION.md) distinguish implemented workflows from future work and live-service limits.
 
 ## Assets
 
