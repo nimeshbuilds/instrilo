@@ -1,0 +1,54 @@
+{
+  "name": "@nimeshbuilds/instrilo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Build with intent. Ship with evidence. Guidance-driven agent creation for Python and TypeScript.",
+  "bin": {
+    "instrilo": "dist/cli.js",
+    "nb-agent": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-assets.mjs",
+    "dev": "tsx src/cli.ts app",
+    "start": "node dist/cli.js app",
+    "cli": "tsx src/cli.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "check": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "fflate": "^0.8.3",
+    "jose": "^6.1.0",
+    "yaml": "^2.8.1",
+    "zod": "^3.25.76",
+    "tsx": "^4.20.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.2"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimeshbuilds/instrilo.git"
+  },
+  "homepage": "https://github.com/nimeshbuilds/instrilo#readme",
+  "bugs": {
+    "url": "https://github.com/nimeshbuilds/instrilo/issues"
+  },
+  "keywords": [
+    "agents",
+    "agent-builder",
+    "llm",
+    "evals",
+    "python",
+    "typescript",
+    "mcp",
+    "langgraph",
+    "agentcore"
+  ]
+}

@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      extended:
+        description: Install all generated framework environments and run local framework/MCP integration checks
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  OTEL_SDK_DISABLED: 'true'
+  CREWAI_TRACING_ENABLED: 'false'
+  LANGSMITH_TRACING: 'false'
+  OPENAI_AGENTS_DISABLE_TRACING: '1'
+
+jobs:
+  test:
+    name: Node 22 / Python 3.12
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Install locked repository dependencies
+        run: npm ci
+      - name: Check types and build application
+        run: |
+          npm run check
+          npm run build
+      - name: Run all tests, including the Python CLI flow
+        env:
+          NB_AGENT_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: npm test
+
+  framework-smoke:
+    name: Optional generated framework and MCP integration
+    if: github.event_name == 'workflow_dispatch' && inputs.extended
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Install locked repository dependencies
+        run: npm ci
+      - name: Install and exercise all seven generated framework variants
+        env:
+          PYTHON: ${{ steps.python.outputs.python-path }}
+          AGENT_SMOKE_ROOT: ${{ runner.temp }}/generated-framework-smoke
+        run: node --import tsx tests/generator-runtime-smoke.mjs --install
+      - name: Exercise remote MCP with native Python dependencies
+        env:
+          NB_SMOKE_NODE_MODULES: ${{ runner.temp }}/generated-framework-smoke/typescript-native/node_modules
+          NB_SMOKE_PYTHON: ${{ runner.temp }}/generated-framework-smoke/python-native/.venv/bin/python
+        run: node tests/mcp-http-smoke.mjs
+      - name: Exercise remote MCP with CrewAI dependency constraints
+        env:
+          NB_SMOKE_NODE_MODULES: ${{ runner.temp }}/generated-framework-smoke/typescript-native/node_modules
+          NB_SMOKE_PYTHON: ${{ runner.temp }}/generated-framework-smoke/python-crewai/.venv/bin/python
+        run: node tests/mcp-http-smoke.mjs

@@ -1,0 +1,22 @@
+name: Feature request
+description: Propose an improvement and explain the workflow it would support.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the user, task, and current limitation. Avoid sharing private business information.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Give a concrete example of the input and result you want.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and constraints
+      description: Include relevant frameworks, deployment targets, authentication requirements, or workarounds.

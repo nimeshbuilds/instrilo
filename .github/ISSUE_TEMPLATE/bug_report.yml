@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible problem in the CLI, local app, or generated source.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a security vulnerability, use the private reporting link in SECURITY.md instead of a public issue.
+        Remove credentials, session URLs, private guidance, model prompts/results, and account identifiers from attachments.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the expected result and the actual result.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest example or commands that reproduce the problem. Use synthetic inputs and credential environment-variable names only.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Commit/version, operating system, Node/Python versions, framework, provider adapter, and local/cloud target. Do not paste environment-variable values.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant redacted logs
+      description: Keep only the output needed to understand the failure. Review it for secrets before submitting.
+      render: text

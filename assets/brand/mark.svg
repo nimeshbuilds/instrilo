@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Instrilo</title>
+  <desc id="desc">Three lines of guidance become a folded check mark.</desc>
+  <path d="M48 58h79v16H48zm0 34h61v16H48zm0 34h33v16H48z" fill="#244E3A"/>
+  <path d="m76 150 25-25 30 30 54-79 29 20-78 112z" fill="#244E3A"/>
+  <path d="m76 150 60 58-5-53-30-30z" fill="#92AE76"/>
+  <path d="m131 155 5 53 22-31z" fill="#B9CE7D"/>
+</svg>
