@@ -6,9 +6,9 @@
   "category": "Quality",
   "duration": "3 minutes",
   "prerequisites": [
-    "Complete the repository installation: Node.js 22+, npm ci, then npm run build.",
-    "Use Bash or another POSIX shell on macOS/Linux; use WSL on Windows. Run commands from the cloned repository root.",
-    "The checked-in verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
+    "Install Instrilo v0.2.3 or newer from a release and prepare the tutorial workspace as shown below.",
+    "Use Bash on macOS/Linux or WSL on Windows. Run all commands inside your prepared tutorial workspace in the same terminal.",
+    "The bundled verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
   ],
   "outcome": "A bound human-review record and a saved blocked release decision, with strict defaults preserved.",
   "verification": {
@@ -23,25 +23,25 @@
     {
       "title": "Create a deliberately insufficient evidence set",
       "body": "One synthetic holdout case makes the boundary clear: it is reserved as holdout but remains synthetic. Demo execution produces no LLM judge score. prepare installs the generated npm dependencies before running the smoke evaluation.",
-      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/human-review-release\nnode dist/cli.js init human-review-release --directory .studio/tutorials\nnode dist/cli.js cases import \"$INSTRILO_PROJECT\" --file examples/quickstarts/delivery/demo-case.jsonl --replace\nnode dist/cli.js build \"$INSTRILO_PROJECT\"\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"\nnode dist/cli.js eval \"$INSTRILO_PROJECT\" --split holdout --output \"$INSTRILO_PROJECT/reports/demo.json\"\nnode dist/cli.js policy show \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/policy-before.json\"",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/human-review-release\ninstrilo init human-review-release --directory .studio/tutorials\ninstrilo cases import \"$INSTRILO_PROJECT\" --file examples/quickstarts/delivery/demo-case.jsonl --replace\ninstrilo build \"$INSTRILO_PROJECT\"\ninstrilo prepare \"$INSTRILO_PROJECT\"\ninstrilo eval \"$INSTRILO_PROJECT\" --split holdout --output \"$INSTRILO_PROJECT/reports/demo.json\"\ninstrilo policy show \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/policy-before.json\"",
       "expected": "The smoke evaluation succeeds in demo mode. The saved policy still rejects demo and synthetic evidence."
     },
     {
       "title": "Inspect the exact output without prior verdicts",
       "body": "The report ID comes from the saved report. The default queue hides automated and previous human verdicts; inspect its output before making any real review decision.",
-      "code": "INSTRILO_REPORT_ID=$(node -p 'require(\"./\"+process.argv[1]+\"/reports/demo.json\").id' \"$INSTRILO_PROJECT\")\nnode dist/cli.js review queue \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\" --output \"$INSTRILO_PROJECT/blind-review.json\"\ncat \"$INSTRILO_PROJECT/blind-review.json\"",
+      "code": "INSTRILO_REPORT_ID=$(node -p 'require(\"./\"+process.argv[1]+\"/reports/demo.json\").id' \"$INSTRILO_PROJECT\")\ninstrilo review queue \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\" --output \"$INSTRILO_PROJECT/blind-review.json\"\ncat \"$INSTRILO_PROJECT/blind-review.json\"",
       "expected": "The queue contains the exact review-demo input/output and binding hashes for this report."
     },
     {
       "title": "Record an abstention and inspect calibration",
-      "body": "The supplied label explicitly says this is a synthetic demo and cannot establish answer quality. Replace it with your own verdict and reason only for actual reviewed evidence. The checked-in review-label helper fills in the actual saved report ID and writes that abstention; the CLI then records it.",
-      "code": "node examples/quickstarts/delivery/review-label.mjs \"$INSTRILO_PROJECT\"\nnode dist/cli.js review label \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/abstention.json\"\nnode dist/cli.js review assessments \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\"\nnode dist/cli.js review calibrate \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\"",
+      "body": "The supplied label explicitly says this is a synthetic demo and cannot establish answer quality. Replace it with your own verdict and reason only for actual reviewed evidence. The bundled review-label helper fills in the actual saved report ID and writes that abstention; the CLI then records it.",
+      "code": "node examples/quickstarts/delivery/review-label.mjs \"$INSTRILO_PROJECT\"\ninstrilo review label \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/abstention.json\"\ninstrilo review assessments \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\"\ninstrilo review calibrate \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\"",
       "expected": "Assessments retain the abstention. Calibration cannot claim judge-human agreement from this unscored, abstained demo."
     },
     {
       "title": "Verify the strict gate blocks release",
       "body": "Exit 2 is the correct result. Read the reasons; do not toggle allowDemo or allowSynthetic just to obtain a green status.",
-      "code": "INSTRILO_RELEASE_EXIT=0\nnode dist/cli.js release \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\" --output \"$INSTRILO_PROJECT/release-decision.json\" || INSTRILO_RELEASE_EXIT=$?\ntest \"$INSTRILO_RELEASE_EXIT\" -eq 2\nnode dist/cli.js policy show \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/policy-after.json\"\nnode examples/quickstarts/delivery/verify.mjs blocked-release \"$INSTRILO_PROJECT\"",
+      "code": "INSTRILO_RELEASE_EXIT=0\ninstrilo release \"$INSTRILO_PROJECT\" --report \"$INSTRILO_REPORT_ID\" --output \"$INSTRILO_PROJECT/release-decision.json\" || INSTRILO_RELEASE_EXIT=$?\ntest \"$INSTRILO_RELEASE_EXIT\" -eq 2\ninstrilo policy show \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/policy-after.json\"\nnode examples/quickstarts/delivery/verify.mjs blocked-release \"$INSTRILO_PROJECT\"",
       "expected": "The saved decision says allowed:false and identifies demo/synthetic evidence and missing requirement coverage. Policy is byte-for-byte unchanged."
     }
   ],

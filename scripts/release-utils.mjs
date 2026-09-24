@@ -37,7 +37,7 @@ export function assertPackageFiles(files) {
   for (const file of files) if (!allowed.test(file) || file.split('/').some(part => part.startsWith('.'))) throw new Error(`Unexpected package file: ${file}`);
   const required = [
     'package.json', 'README.md', 'LICENSE', 'SECURITY.md', 'docs/CLI.md',
-    'dist/cli.js', 'dist/server.js', 'dist/execution.js', 'dist/adapter-worker.mjs', 'dist/templates/frameworks.js',
+    'dist/cli.js', 'dist/cli-tutorials.js', 'dist/server.js', 'dist/execution.js', 'dist/adapter-worker.mjs', 'dist/templates/frameworks.js',
     ...['agent', 'runtime', 'server', 'session', 'mcp_server', 'mcp_http'].flatMap(name => ['py', 'ts'].map(language => `dist/templates/${name}.${language}.tpl`)),
     ...['index.html', 'app.js', 'deployment.js', 'style.css', 'icon.svg'].map(file => `dist/web/${file}`),
     'examples/quickstarts/foundations/answers.json', 'examples/quickstarts/foundations/guidance/product.md',

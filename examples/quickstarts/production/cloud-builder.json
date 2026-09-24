@@ -1,0 +1,1 @@
+{"kind":"gateway","model":"REPLACE_BUILDER_MODEL","baseUrl":"https://gateway.example.invalid/v1","auth":{"type":"bearer-env","env":"BUILDER_GATEWAY_TOKEN"}}

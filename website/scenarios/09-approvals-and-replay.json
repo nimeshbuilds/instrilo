@@ -6,9 +6,9 @@
   "category": "Reliability",
   "duration": "5 minutes",
   "prerequisites": [
-    "Complete the repository installation: Node.js 22+, npm ci, then npm run build.",
-    "Use Bash or another POSIX shell on macOS/Linux; use WSL on Windows. Run commands from the cloned repository root.",
-    "The checked-in verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
+    "Install Instrilo v0.2.3 or newer from a release and prepare the tutorial workspace as shown below.",
+    "Use Bash on macOS/Linux or WSL on Windows. Run all commands inside your prepared tutorial workspace in the same terminal.",
+    "The bundled verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
   ],
   "outcome": "A completed durable run, a Mermaid run graph, and matched replay with zero live calls.",
   "verification": {
@@ -23,25 +23,25 @@
     {
       "title": "Start a controlled read/write example",
       "body": "The deterministic model proposes lookup(42), then update(42, ready). The update tool explicitly requires approval.",
-      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/approvals-and-replay\nnode dist/cli.js init approvals-and-replay --directory .studio/tutorials\nnode examples/quickstarts/delivery/fixture.mjs \"$INSTRILO_PROJECT/fixture\" > \"$INSTRILO_PROJECT/fixture.log\" 2>&1 &\nINSTRILO_FIXTURE_PID=$!\ntrap 'kill \"$INSTRILO_FIXTURE_PID\" 2>/dev/null || true' EXIT\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" ready\nnode dist/cli.js connections add local-tools \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/tools-runtime.json\"\nnode dist/cli.js connections use runtime local-tools \"$INSTRILO_PROJECT\"\nnode dist/cli.js tools add \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/lookup.json\"\nnode dist/cli.js tools add \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/update.json\"\nnode dist/cli.js build \"$INSTRILO_PROJECT\"\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/approvals-and-replay\ninstrilo init approvals-and-replay --directory .studio/tutorials\nnode examples/quickstarts/delivery/fixture.mjs \"$INSTRILO_PROJECT/fixture\" > \"$INSTRILO_PROJECT/fixture.log\" 2>&1 &\nINSTRILO_FIXTURE_PID=$!\ntrap 'kill \"$INSTRILO_FIXTURE_PID\" 2>/dev/null || true' EXIT\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" ready\ninstrilo connections add local-tools \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/tools-runtime.json\"\ninstrilo connections use runtime local-tools \"$INSTRILO_PROJECT\"\ninstrilo tools add \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/lookup.json\"\ninstrilo tools add \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/update.json\"\ninstrilo build \"$INSTRILO_PROJECT\"\ninstrilo prepare \"$INSTRILO_PROJECT\"",
       "expected": "The generated runtime has one read tool and one approval-required write tool, both confined to the local fixture."
     },
     {
       "title": "Record the run and verify the pause",
       "body": "Content recording is explicit. Exit 3 means paused before the write, not completed. The fixture counter proves the write has not happened.",
-      "code": "INSTRILO_RUN_EXIT=0\nnode dist/cli.js runs start \"$INSTRILO_PROJECT\" --input 'Inspect record 42 and set its state to ready.' --record-content > \"$INSTRILO_PROJECT/paused.json\" || INSTRILO_RUN_EXIT=$?\ntest \"$INSTRILO_RUN_EXIT\" -eq 3\nINSTRILO_RUN_ID=$(node -p 'require(\"./\"+process.argv[1]+\"/paused.json\").id' \"$INSTRILO_PROJECT\")\nnode dist/cli.js approvals show \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/pending.json\"\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" counts > \"$INSTRILO_PROJECT/before-counts.json\"\nnode examples/quickstarts/delivery/verify.mjs approval-pause \"$INSTRILO_PROJECT\"",
+      "code": "INSTRILO_RUN_EXIT=0\ninstrilo runs start \"$INSTRILO_PROJECT\" --input 'Inspect record 42 and set its state to ready.' --record-content > \"$INSTRILO_PROJECT/paused.json\" || INSTRILO_RUN_EXIT=$?\ntest \"$INSTRILO_RUN_EXIT\" -eq 3\nINSTRILO_RUN_ID=$(node -p 'require(\"./\"+process.argv[1]+\"/paused.json\").id' \"$INSTRILO_PROJECT\")\ninstrilo approvals show \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/pending.json\"\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" counts > \"$INSTRILO_PROJECT/before-counts.json\"\nnode examples/quickstarts/delivery/verify.mjs approval-pause \"$INSTRILO_PROJECT\"",
       "expected": "The pending record names update and its exact arguments/digest. Counters show one read and zero writes."
     },
     {
       "title": "Approve that exact digest and resume",
       "body": "For this tutorial, inspect the displayed request and confirm it targets only the in-memory fixture. Approval is bound to the action and expires after five minutes; it does not resume work automatically.",
-      "code": "INSTRILO_APPROVAL_DIGEST=$(node -p 'require(\"./\"+process.argv[1]+\"/pending.json\").pending[0].approvalDigest' \"$INSTRILO_PROJECT\")\nnode dist/cli.js approvals approve \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" --digest \"$INSTRILO_APPROVAL_DIGEST\" --expires-in 300 --reviewer 'Tutorial operator'\nnode dist/cli.js runs resume \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/completed.json\"\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" counts > \"$INSTRILO_PROJECT/after-counts.json\"\nnode examples/quickstarts/delivery/verify.mjs approved-run \"$INSTRILO_PROJECT\"\nnode dist/cli.js runs graph \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/run.mmd\"",
+      "code": "INSTRILO_APPROVAL_DIGEST=$(node -p 'require(\"./\"+process.argv[1]+\"/pending.json\").pending[0].approvalDigest' \"$INSTRILO_PROJECT\")\ninstrilo approvals approve \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" --digest \"$INSTRILO_APPROVAL_DIGEST\" --expires-in 300 --reviewer 'Tutorial operator'\ninstrilo runs resume \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/completed.json\"\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" counts > \"$INSTRILO_PROJECT/after-counts.json\"\nnode examples/quickstarts/delivery/verify.mjs approved-run \"$INSTRILO_PROJECT\"\ninstrilo runs graph \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/run.mmd\"",
       "expected": "The run completes, with one read and exactly one fixture write. run.mmd describes its model/tool steps."
     },
     {
       "title": "Stop every fixture service and replay",
       "body": "Frozen replay consumes recorded model/tool responses. Stopping the service first makes an accidental live dependency visible.",
-      "code": "kill \"$INSTRILO_FIXTURE_PID\"\nwait \"$INSTRILO_FIXTURE_PID\" || true\ntrap - EXIT\nnode dist/cli.js runs replay \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/replay.json\"\nnode examples/quickstarts/delivery/verify.mjs offline-replay \"$INSTRILO_PROJECT\"",
+      "code": "kill \"$INSTRILO_FIXTURE_PID\"\nwait \"$INSTRILO_FIXTURE_PID\" || true\ntrap - EXIT\ninstrilo runs replay \"$INSTRILO_RUN_ID\" \"$INSTRILO_PROJECT\" > \"$INSTRILO_PROJECT/replay.json\"\nnode examples/quickstarts/delivery/verify.mjs offline-replay \"$INSTRILO_PROJECT\"",
       "expected": "matched:true, modelCalls:0, and toolCalls:0. The saved run remains available for inspection without a running service."
     }
   ],

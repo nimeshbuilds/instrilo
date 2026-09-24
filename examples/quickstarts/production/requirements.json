@@ -1,0 +1,4 @@
+[
+  {"id":"return-policy","title":"Ground return answers in policy","text":"Return-window answers state the policy's 30-day limit and cite RET-30.","sourcePath":"AGENT-GUIDANCE.md"},
+  {"id":"refund-handoff","title":"Preserve the human refund boundary","text":"Refund requests are handed to a human without claiming a refund was issued.","sourcePath":"AGENT-GUIDANCE.md"}
+]

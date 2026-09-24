@@ -35,7 +35,8 @@ test('site publishes ten static walkthroughs with source-exact commands, expecte
   assert.equal((await htmlFiles(directory)).length, 12);
   assert.match(index, /First guide: no model account needed/);
   assert.match(index, /instrilo web enable/);
-  assert.match(index, /node dist\/cli\.js web enable/);
+  assert.doesNotMatch(index, /node\s+(?:\.\/)?dist\/cli\.js/);
+  assert.match(index, /npm link\ninstrilo web enable/);
   const { version } = JSON.parse(await readFile(join(repository, 'package.json'), 'utf8'));
   assert.ok(index.includes(`npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v${version}/nimeshbuilds-instrilo-${version}.tgz`));
   assert.ok(index.includes(`https://github.com/nimeshbuilds/instrilo/releases/tag/v${version}`));
@@ -44,7 +45,9 @@ test('site publishes ten static walkthroughs with source-exact commands, expecte
   assert.match(index, /<h3>Build from source<\/h3>/);
   assert.match(index, /--no-open/);
   assert.match(index, /Keep the terminal running and stop with Ctrl\+C/);
-  assert.match(index, /These exact guides use the source checkout and bundled fixtures/);
+  assert.match(index, /Every guide uses the installed CLI and bundled tutorial inputs/);
+  assert.match(index, /No source checkout is needed/);
+  assert.doesNotMatch(index, /guides use the source checkout|build from source above to follow/);
   assert.match(index, /id="source-setup"/);
   for (const scenario of scenarios) {
     const html = await readFile(join(directory, 'quickstarts', scenario.id, 'index.html'), 'utf8');
@@ -54,14 +57,18 @@ test('site publishes ten static walkthroughs with source-exact commands, expecte
     for (const prerequisite of scenario.prerequisites) assert.ok(html.includes(escape(prerequisite)), `${scenario.id}: prerequisite`);
     for (const limitation of scenario.verification.limitations) assert.ok(html.includes(escape(limitation)), `${scenario.id}: limitation`);
     const commands = [...html.matchAll(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g)].map(match => decode(match[1]));
-    assert.deepEqual(commands, scenario.steps.flatMap((step: { code?: string; manualCode?: string }) => step.code || step.manualCode ? [step.code ?? step.manualCode] : []), `${scenario.id}: displayed commands differ from executable source`);
+    assert.equal(commands[0], 'instrilo tutorials setup ./instrilo-tutorials\ncd ./instrilo-tutorials', `${scenario.id}: guide must prepare inputs through the installed CLI`);
+    assert.deepEqual(commands.slice(1), scenario.steps.flatMap((step: { code?: string; manualCode?: string }) => step.code || step.manualCode ? [step.code ?? step.manualCode] : []), `${scenario.id}: displayed commands differ from executable source`);
     assert.equal((html.match(/Manual step · not executed by walkthrough checks/g) ?? []).length, scenario.steps.filter((step: { manualCode?: string }) => step.manualCode).length);
     for (const [index, step] of scenario.steps.entries()) {
       assert.ok(html.includes(`id="step-${index + 1}"`), `${scenario.id}: step anchor`);
       assert.ok(html.includes(escape(step.expected)), `${scenario.id}: expected result`);
     }
     assert.ok(html.includes('id="cleanup"'), `${scenario.id}: cleanup`);
-    assert.match(html, /href="\.\.\/\.\.\/index\.html#source-setup">source installation/);
+    assert.match(html, /href="\.\.\/\.\.\/index\.html#release-setup">built app and CLI/);
+    assert.doesNotMatch(html, /node\s+(?:\.\/)?dist\/cli\.js|git clone|cloned.*repository|source installation|repository root/);
+    assert.match(html, /No Git or source build is needed/);
+    assert.match(html, /instrilo generation plan PROJECT/);
   }
 });
 
@@ -123,6 +130,7 @@ test('published verification only claims a pass for the matching scenario finger
       schemaVersion: 1,
       generatedAt: '2026-09-24T00:00:00.000Z',
       platform: 'test', node: '22', privateField: 'must not publish',
+      package: '@nimeshbuilds/instrilo', version: '0.2.3', packageSha256: 'a'.repeat(64), installation: 'Isolated installed package',
       scenarios: [
         { id: matching.id, status: 'passed', scenarioHash: await scenarioFingerprint(matching), steps: matching.steps.filter((step: { code?: string }) => step.code).length, durationMs: 123 },
         { id: stale.id, status: 'passed', scenarioHash: 'obsolete', steps: 999, durationMs: 456 },
@@ -139,6 +147,9 @@ test('published verification only claims a pass for the matching scenario finger
     assert.equal(publicReport.scenarios.filter((item: { status: string }) => item.status === 'passed').length, 1);
     assert.equal(publicReport.scenarios.find((item: { id: string }) => item.id === stale.id).status, 'unverified');
     assert.equal(publicReport.privateField, undefined);
+    assert.equal(publicReport.packageSha256, report.packageSha256);
+    assert.equal(publicReport.version, report.version);
+    assert.equal(publicReport.installation, report.installation);
     const absent = await buildSite(separate, { verification: null });
     assert.equal(absent.verified, 0);
     assert.doesNotMatch(await readFile(join(separate, 'index.html'), 'utf8'), /Local steps checked/);

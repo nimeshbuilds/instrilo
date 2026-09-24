@@ -79,6 +79,7 @@ reserved word. For example: command in help --all.
 Start here:
   instrilo web enable                  Open the local app in your browser
   instrilo explain quickstart
+  instrilo tutorials list               Ten complete installed-CLI walkthroughs
   instrilo help --all                   Every command, argument and option
   instrilo help --json                  Machine-readable command reference
   instrilo explain --list               Every manual topic
@@ -103,9 +104,8 @@ Python 3.11–3.13 plus uv. Native Windows cancellation/install need further wor
 Install the built CLI and app from a GitHub release using the installation guide:
   https://github.com/nimeshbuilds/instrilo/blob/main/docs/INSTALLATION.md
 If instrilo --version works, you can run this demo immediately; no clone is needed.
-Or build from source: npm ci --ignore-scripts, then npm run build. From that
-repository root, replace instrilo with node dist/cli.js in the commands below.
-Optional npm link adds instrilo plus the in and nb-agent aliases to PATH.
+Source contributors: npm ci --ignore-scripts, npm run build, then npm link.
+Both installation paths provide the same instrilo, in and nb-agent commands.
 In zsh: in --help. In Bash/POSIX sh: command in --help (in is a reserved word).
 
   instrilo init support-agent --directory .studio/projects --language typescript
@@ -133,6 +133,40 @@ paid model request is made until you configure a live connection.
 Python: set NB_AGENT_PYTHON=/absolute/path/to/python3 if interpreter selection is
 ambiguous. The generated project's .venv takes precedence. Use a separate venv
 for every generated project.`},
+ tutorials:{title:'Complete walkthroughs with the installed CLI',body:`Install Instrilo v0.2.3 or newer from a GitHub release. No Git checkout is needed.
+
+  instrilo tutorials list
+  instrilo tutorials setup ./instrilo-tutorials
+  cd ./instrilo-tutorials
+  instrilo tutorials show deployment-artifacts
+  instrilo help tutorials setup
+
+setup copies the bundled examples and offline Markdown guides into a NEW folder.
+It refuses existing files, folders and symlinks so your work is preserved. To
+continue an existing workspace, cd into it; to repeat a guide, use a fresh folder.
+Setup does not run example code, start services, install dependencies or call APIs.
+Use Bash for guide steps, including on macOS (run bash in a zsh terminal). Windows
+uses WSL. Keep a guide's commands in one session; temporary variables and fixture
+processes belong to that session. Python walkthroughs also require Python and uv.
+
+All agent operations use instrilo. A guide may invoke a bundled Node.js helper to
+start an explicitly named local model/tool fixture or check saved outputs. These
+helpers are readable examples, not alternate ways to start the Instrilo CLI.
+Guides are saved under guides/; examples under examples/quickstarts/; projects
+and evidence go under .studio/tutorials/ as the commands run.
+
+The deployment-artifacts guide covers guidance, architecture, an executable
+LangGraph, independent builder/runtime/judge connections, requirement coverage,
+recorded runs, evaluations and cloud artifacts for AWS AgentCore, Cloud Run and
+Azure Container Apps. Local fixture evidence demonstrates plumbing only. Live
+model evaluation, human review, cloud identity/permissions, container execution
+and account-specific deployment remain explicit steps before production.
+
+Read every expected outcome and verification limitation. Stop each guide-owned
+fixture with its documented cleanup step. Keep project reports before removing a
+workspace. Package uninstall or update does not remove your tutorial work.
+
+Online guides: https://nimeshbuilds.github.io/instrilo/#quickstarts`},
  web:{title:'Open and control the local web app',body:`  instrilo web enable
   instrilo web
   instrilo web enable --workspace ./my-projects --port 4317
@@ -155,9 +189,9 @@ URL in a browser that can reach that machine's loopback address. A browser-launc
 failure leaves the server running and prints a fallback URL. An occupied fixed
 port fails; remove --port or use --port 0 to let the app choose an available one.
 
-For source builds, run node dist/cli.js web enable after npm ci --ignore-scripts
-and npm run build. No global link is required. With a linked/release install,
-command in web enable works in Bash and zsh; in web enable also works in zsh.
+Source contributors build and run npm link once, then use instrilo web enable
+like release users. command in web enable works in Bash and zsh;
+in web enable also works in zsh.
 
 The earlier app command remains available with its existing workspace and port
 defaults. It prints a URL without opening a browser; add --open to open it:
@@ -778,6 +812,9 @@ const examples:Record<string,string[]>={
  eval:['instrilo eval PROJECT --split holdout --output PROJECT/reports/holdout.json'],
  plan:['instrilo plan PROJECT --interview --apply'],
  deploy:['instrilo deploy PROJECT','instrilo deploy PROJECT --execute'],
+ 'tutorials list':['instrilo tutorials list'],
+ 'tutorials show':['instrilo tutorials show deployment-artifacts'],
+ 'tutorials setup':['instrilo tutorials setup ./instrilo-tutorials'],
  web:['instrilo web','instrilo web --no-open'],
  'web enable':['instrilo web enable','instrilo web enable --workspace ./my-projects --port 4317','instrilo web enable --no-open'],
  app:['instrilo app --workspace .studio/projects --port 4317','instrilo app --workspace ./my-projects --port 0 --open'],

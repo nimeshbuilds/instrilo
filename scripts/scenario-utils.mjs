@@ -46,7 +46,7 @@ export async function scenarioFingerprint(scenario) {
   const files = [
     ...await filesBelow(join(repository, 'src')),
     ...await filesBelow(join(repository, 'examples/quickstarts')),
-    ...['package.json', 'package-lock.json', 'tsconfig.json', 'scripts/scenario-utils.mjs', 'scripts/test-scenarios.mjs'].map(path => join(repository, path)),
+    ...['package.json', 'package-lock.json', 'tsconfig.json', 'scripts/scenario-utils.mjs', 'scripts/test-scenarios.mjs', 'scripts/release-utils.mjs'].map(path => join(repository, path)),
   ];
   for (const file of files.sort()) hash.update(relative(repository, file)).update('\0').update(await readFile(file)).update('\0');
   return hash.digest('hex');

@@ -7,6 +7,7 @@ import { registerQualityCommands } from './cli-quality.js';
 import { registerSubscriptionCommands } from './cli-subscriptions.js';
 import { registerDeploymentCommands } from './cli-deployment.js';
 import { registerWebCommands } from './cli-web.js';
+import { registerTutorialCommands } from './cli-tutorials.js';
 import { installCliHelp } from './cli-help.js';
 import { atomicProjectWrite, readTextDocument, readDocument, hashText } from './project-ops.js';
 import { withGenerationLock } from './regeneration.js';
@@ -108,6 +109,7 @@ program.command('deploy').description('Show generated delivery instructions; --e
   });
 });
 registerWebCommands(program);
+registerTutorialCommands(program);
 
 registerProjectCommands(program, guidance);
 registerQualityCommands(program);

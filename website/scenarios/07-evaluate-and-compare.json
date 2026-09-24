@@ -6,9 +6,9 @@
   "category": "Quality",
   "duration": "5 minutes",
   "prerequisites": [
-    "Complete the repository installation: Node.js 22+, npm ci, then npm run build.",
-    "Use Bash or another POSIX shell on macOS/Linux; use WSL on Windows. Run commands from the cloned repository root.",
-    "The checked-in verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
+    "Install Instrilo v0.2.3 or newer from a release and prepare the tutorial workspace as shown below.",
+    "Use Bash on macOS/Linux or WSL on Windows. Run all commands inside your prepared tutorial workspace in the same terminal.",
+    "The bundled verify.mjs helper only reads the tutorial outputs and checks the expected facts. All agent actions still use the visible Instrilo commands."
   ],
   "outcome": "Two saved reports and a comparison that identifies both regressed cases.",
   "verification": {
@@ -22,25 +22,25 @@
     {
       "title": "Create the agent and start the demonstration service",
       "body": "The fixture binds only to an ephemeral localhost port, needs no API key, and automatically stops after ten minutes. The EXIT trap also stops it if a later step fails.",
-      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/evaluate-and-compare\nnode dist/cli.js init evaluate-and-compare --directory .studio/tutorials\nnode examples/quickstarts/delivery/fixture.mjs \"$INSTRILO_PROJECT/fixture\" > \"$INSTRILO_PROJECT/fixture.log\" 2>&1 &\nINSTRILO_FIXTURE_PID=$!\ntrap 'kill \"$INSTRILO_FIXTURE_PID\" 2>/dev/null || true' EXIT\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" ready",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/evaluate-and-compare\ninstrilo init evaluate-and-compare --directory .studio/tutorials\nnode examples/quickstarts/delivery/fixture.mjs \"$INSTRILO_PROJECT/fixture\" > \"$INSTRILO_PROJECT/fixture.log\" 2>&1 &\nINSTRILO_FIXTURE_PID=$!\ntrap 'kill \"$INSTRILO_FIXTURE_PID\" 2>/dev/null || true' EXIT\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" ready",
       "expected": "The readiness check prints zero runtime/judge/tool requests."
     },
     {
       "title": "Assign runtime and judge separately",
-      "body": "The connection files are written by the fixture using its chosen local port. Distinct model IDs exercise independent role selection. The two checked-in cases are synthetic on purpose.",
-      "code": "node dist/cli.js connections add runtime-fixture \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/runtime.json\"\nnode dist/cli.js connections add judge-fixture \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/judge.json\"\nnode dist/cli.js connections use runtime runtime-fixture \"$INSTRILO_PROJECT\"\nnode dist/cli.js connections use judge judge-fixture \"$INSTRILO_PROJECT\"\nnode dist/cli.js cases import \"$INSTRILO_PROJECT\" --file examples/quickstarts/delivery/cases.jsonl --replace\nnode dist/cli.js build \"$INSTRILO_PROJECT\"\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"",
+      "body": "The connection files are written by the fixture using its chosen local port. Distinct model IDs exercise independent role selection. The two bundled cases are synthetic on purpose.",
+      "code": "instrilo connections add runtime-fixture \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/runtime.json\"\ninstrilo connections add judge-fixture \"$INSTRILO_PROJECT\" --file \"$INSTRILO_PROJECT/fixture/judge.json\"\ninstrilo connections use runtime runtime-fixture \"$INSTRILO_PROJECT\"\ninstrilo connections use judge judge-fixture \"$INSTRILO_PROJECT\"\ninstrilo cases import \"$INSTRILO_PROJECT\" --file examples/quickstarts/delivery/cases.jsonl --replace\ninstrilo build \"$INSTRILO_PROJECT\"\ninstrilo prepare \"$INSTRILO_PROJECT\"",
       "expected": "Generated code and its runtime dependencies are ready. prepare downloads normal npm dependencies; it does not call a model."
     },
     {
       "title": "Save the passing baseline",
       "body": "The actual generated agent calls the local runtime connection; Instrilo sends each result to the separate judge connection.",
-      "code": "node dist/cli.js eval \"$INSTRILO_PROJECT\" --split development --output \"$INSTRILO_PROJECT/reports/baseline.json\"\nnode examples/quickstarts/delivery/verify.mjs baseline \"$INSTRILO_PROJECT\"",
+      "code": "instrilo eval \"$INSTRILO_PROJECT\" --split development --output \"$INSTRILO_PROJECT/reports/baseline.json\"\nnode examples/quickstarts/delivery/verify.mjs baseline \"$INSTRILO_PROJECT\"",
       "expected": "Both cases pass deterministic checks and receive a fixture judge score of 1."
     },
     {
       "title": "Introduce and detect a regression",
       "body": "Only the local fixture answer changes. The dataset, configuration, guidance, and judge stay unchanged. Evaluation exit 1 is expected here and is explicitly checked; its failed report is still saved.",
-      "code": "node examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" bad\nINSTRILO_EVAL_EXIT=0\nnode dist/cli.js eval \"$INSTRILO_PROJECT\" --split development --output \"$INSTRILO_PROJECT/reports/regression.json\" || INSTRILO_EVAL_EXIT=$?\ntest \"$INSTRILO_EVAL_EXIT\" -eq 1\nnode dist/cli.js compare \"$INSTRILO_PROJECT/reports/baseline.json\" \"$INSTRILO_PROJECT/reports/regression.json\" > \"$INSTRILO_PROJECT/comparison.json\"\nnode examples/quickstarts/delivery/verify.mjs comparison \"$INSTRILO_PROJECT\"\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" counts > \"$INSTRILO_PROJECT/fixture-counts.json\"\nnode examples/quickstarts/delivery/verify.mjs eval-counts \"$INSTRILO_PROJECT\"\nkill \"$INSTRILO_FIXTURE_PID\"\nwait \"$INSTRILO_FIXTURE_PID\" || true\ntrap - EXIT",
+      "code": "node examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" bad\nINSTRILO_EVAL_EXIT=0\ninstrilo eval \"$INSTRILO_PROJECT\" --split development --output \"$INSTRILO_PROJECT/reports/regression.json\" || INSTRILO_EVAL_EXIT=$?\ntest \"$INSTRILO_EVAL_EXIT\" -eq 1\ninstrilo compare \"$INSTRILO_PROJECT/reports/baseline.json\" \"$INSTRILO_PROJECT/reports/regression.json\" > \"$INSTRILO_PROJECT/comparison.json\"\nnode examples/quickstarts/delivery/verify.mjs comparison \"$INSTRILO_PROJECT\"\nnode examples/quickstarts/delivery/control.mjs \"$INSTRILO_PROJECT/fixture\" counts > \"$INSTRILO_PROJECT/fixture-counts.json\"\nnode examples/quickstarts/delivery/verify.mjs eval-counts \"$INSTRILO_PROJECT\"\nkill \"$INSTRILO_FIXTURE_PID\"\nwait \"$INSTRILO_FIXTURE_PID\" || true\ntrap - EXIT",
       "expected": "The comparison lists billing-escalation and ticket-reference as regressions with passRateDelta:-1. Counters show four runtime and four judge calls. The fixture then stops."
     }
   ],

@@ -2,8 +2,8 @@
   "category": "Build & connect",
   "duration": "5–10 minutes",
   "prerequisites": [
-    "Complete the source installation on the start page: Node.js 22+, npm, Git, then npm ci and npm run build.",
-    "Use Bash on macOS/Linux or WSL, at the cloned repository root. Keep every step in the same terminal.",
+    "Install Instrilo v0.2.3 or newer from a release. Check instrilo --version, then prepare the tutorial workspace as shown below.",
+    "Use Bash on macOS/Linux or WSL, inside your prepared tutorial workspace. Keep every step in the same terminal.",
     "Use a fresh tutorial project name. If init/create says the project already exists, choose a new slug and update INSTRILO_PROJECT; do not delete work you want to keep.",
     "Install uv and Python 3.11–3.13 before this guide. uv may discover or download a compatible interpreter; generated projects declare >=3.11,<3.14.",
     "If uv must use a particular installed interpreter, set NB_AGENT_PYTHON to its absolute executable path before prepare."
@@ -28,7 +28,7 @@
   "summary": "Bring a folder of product decisions and generate a runnable Python project.",
   "outcome": "A Python agent with a copied, fingerprinted product-guidance directory and a verified local invocation.",
   "verification": {
-    "scope": "The shown commands inspect an existing guidance folder, copy it into a new Python project, install declared dependencies through uv, and run the generated Python runtime. The checked-in verify.mjs helper only reads saved JSON and asserts the expected results.",
+    "scope": "The shown commands inspect an existing guidance folder, copy it into a new Python project, install declared dependencies through uv, and run the generated Python runtime. The bundled verify.mjs helper only reads saved JSON and asserts the expected results.",
     "limitations": [
       "The runtime uses an offline echo provider; this validates Python execution and guidance packaging, not task quality.",
       "No real account is accessed. uv preparation requires package-registry access and a compatible Python interpreter."
@@ -38,25 +38,25 @@
     {
       "title": "Check Python tooling and inspect the brief",
       "body": "The supplied folder represents your existing product documentation. Credentials and other excluded files should stay outside guidance. The inspector inventories eligible text and reports missing decisions.",
-      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/python-from-guidance\nuv --version\nnode dist/cli.js guidance inspect examples/quickstarts/foundations/guidance > /dev/null\nnode dist/cli.js guidance inspect examples/quickstarts/foundations/guidance",
+      "code": "set -eu\nINSTRILO_PROJECT=.studio/tutorials/python-from-guidance\nuv --version\ninstrilo guidance inspect examples/quickstarts/foundations/guidance > /dev/null\ninstrilo guidance inspect examples/quickstarts/foundations/guidance",
       "expected": "uv prints its version. Guidance inspection finds product.md and no missing product sections."
     },
     {
       "title": "Create a Python project from that folder",
       "body": "Create copies eligible guidance files into the new project. The original folder remains your input, while this project owns its copy.",
-      "code": "node dist/cli.js create python-from-guidance --directory .studio/tutorials --guidance examples/quickstarts/foundations/guidance --language python --framework native --target local\ncmp examples/quickstarts/foundations/guidance/product.md \"$INSTRILO_PROJECT/guidance/product.md\"\nnode dist/cli.js validate \"$INSTRILO_PROJECT\"",
+      "code": "instrilo create python-from-guidance --directory .studio/tutorials --guidance examples/quickstarts/foundations/guidance --language python --framework native --target local\ncmp examples/quickstarts/foundations/guidance/product.md \"$INSTRILO_PROJECT/guidance/product.md\"\ninstrilo validate \"$INSTRILO_PROJECT\"",
       "expected": "The CLI reports one guidance file, cmp confirms an exact copy, and validation reports valid: true."
     },
     {
       "title": "Build and install generated dependencies",
       "body": "Prepare uses uv sync in the generated project and creates its .venv. It may download packages; it does not install provider CLIs or sign into accounts.",
-      "code": "node dist/cli.js build \"$INSTRILO_PROJECT\"\nnode dist/cli.js prepare \"$INSTRILO_PROJECT\"\ntest -f \"$INSTRILO_PROJECT/generated/agent.py\"\ntest -f \"$INSTRILO_PROJECT/generated/pyproject.toml\"",
+      "code": "instrilo build \"$INSTRILO_PROJECT\"\ninstrilo prepare \"$INSTRILO_PROJECT\"\ntest -f \"$INSTRILO_PROJECT/generated/agent.py\"\ntest -f \"$INSTRILO_PROJECT/generated/pyproject.toml\"",
       "expected": "agent.py and pyproject.toml exist. uv successfully creates the generated environment."
     },
     {
       "title": "Run the generated Python agent",
       "body": "Instrilo automatically uses the generated virtual environment. The explicit demo prefix demonstrates that no inference request occurred.",
-      "code": "node dist/cli.js run \"$INSTRILO_PROJECT\" --input 'Explain the shop return policy.' > \"$INSTRILO_PROJECT/run.json\"\ncat \"$INSTRILO_PROJECT/run.json\"\nnode examples/quickstarts/foundations/verify.mjs offline-python \"$INSTRILO_PROJECT\"",
+      "code": "instrilo run \"$INSTRILO_PROJECT\" --input 'Explain the shop return policy.' > \"$INSTRILO_PROJECT/run.json\"\ncat \"$INSTRILO_PROJECT/run.json\"\nnode examples/quickstarts/foundations/verify.mjs offline-python \"$INSTRILO_PROJECT\"",
       "expected": "The result is “[DEMO ONLY] Explain the shop return policy.” with a recorded model step."
     }
   ],

@@ -9,11 +9,11 @@
 
 A local CLI and web app for turning product guidance into an owned agent project. Choose Python or TypeScript, a framework, independent builder/runtime/judge connections, evaluation cases, and delivery artifacts.
 
-Instrilo 0.2.2 includes a ready-built app and CLI package for Node.js. It provides exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
+Instrilo 0.2.3 includes a ready-built app and CLI package for Node.js. It provides exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
 
 [Install the release](docs/INSTALLATION.md) · [Website & ten practical quickstarts](https://nimeshbuilds.github.io/instrilo/) · [CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
 
-The quickstarts cover TypeScript, Python, separate model connections, HTTP tools, LangGraph, subscription setup, evaluations, human review, approvals/replay, and cloud packaging. Their published command blocks are executed in isolated workspaces before the documentation site is deployed. Each guide identifies local fixtures, expected results, and manual account-dependent steps; passing a tutorial is not a claim that every provider or cloud account has been verified. GitHub Pages hosts the documentation; the Instrilo app runs locally.
+The quickstarts cover TypeScript, Python, separate model connections, HTTP tools, LangGraph, subscription setup, evaluations, human review, approvals/replay, and an end-to-end agent build with architecture, graph, judge, release evidence, and cloud artifacts. All ten guides use the installed CLI and bundled tutorial inputs. Their published command blocks are executed in isolated workspaces before the documentation site is deployed. Each guide identifies local fixtures, expected results, and manual account-dependent steps; passing a tutorial is not a claim that every provider or cloud account has been verified. GitHub Pages hosts the documentation; the Instrilo app runs locally.
 
 ## Why Instrilo
 
@@ -27,10 +27,10 @@ Choose the **built release** or **build from source**. Both include the same CLI
 
 ### Download and install the release
 
-Install the ready-built [v0.2.2 release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.2) without cloning or compiling:
+Install the ready-built [v0.2.3 release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.3) without cloning or compiling:
 
 ```sh
-npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.2/nimeshbuilds-instrilo-0.2.2.tgz
+npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.3/nimeshbuilds-instrilo-0.2.3.tgz
 instrilo web enable
 ```
 
@@ -38,17 +38,18 @@ You can also [download the package and verify its checksum](docs/INSTALLATION.md
 
 ### Build from source
 
-With [Git](https://git-scm.com/downloads) installed:
+For contributors and people who want to change Instrilo itself. With [Git](https://git-scm.com/downloads) installed:
 
 ```sh
 git clone https://github.com/nimeshbuilds/instrilo.git
 cd instrilo
 npm ci --ignore-scripts
 npm run build
-node dist/cli.js web enable
+npm link
+instrilo web enable
 ```
 
-No global installation is required. From that repository root, replace `instrilo` with `node dist/cli.js` in the examples below. Optionally run `npm link` to make `instrilo` available from other folders.
+`npm link` makes the built `instrilo` command available from any folder. Every guide uses that same command. If linking reports a permission error, use the [source setup instructions](docs/INSTALLATION.md#build-from-source-instead) for a user-owned prefix.
 
 ### Open the web app
 
@@ -261,11 +262,20 @@ The app itself is a local workbench. It does not supply a hosted identity provid
 
 ## Follow the ten walkthroughs
 
-The [ten tested quickstarts](https://nimeshbuilds.github.io/instrilo/#quickstarts) use repository fixtures and source-relative commands. Use the **Build from source** steps above, then follow a guide from that repository root. Keep this checkout separate from a global release installation. Normal app and CLI use does not require these fixtures; the CLI example above works with either installation path.
+The [ten practical quickstarts](https://nimeshbuilds.github.io/instrilo/#quickstarts) work with the installed release. Prepare their bundled inputs once in a new folder, then follow any guide in the same Bash terminal:
 
-Source contributors can run `npm run cli -- web enable` directly from TypeScript after installing dependencies. The existing `npm run dev -- --workspace .studio/projects --port 0` server entry point is also available.
+```sh
+instrilo tutorials setup ./instrilo-tutorials
+cd ./instrilo-tutorials
+```
+
+No source checkout is needed. If the app is using that terminal, stop it with Ctrl+C first. For another guide, reuse the prepared folder. Each guide creates its own project under `.studio/tutorials/` and labels optional live-account steps.
+
+[Build an agent from guidance to cloud artifacts](https://nimeshbuilds.github.io/instrilo/quickstarts/deployment-artifacts/) connects the full workflow: architecture and guidance, LangGraph, separate builder/runtime/judge connections, evaluations, observed run graph, release gates, and deployment packages for supported clouds. The tested local path uses transparent fixture services; live model quality, cloud identity, and an actual deployment need your own environment checks.
 
 ## Architecture and tests
+
+This section is for contributors working in a source checkout. The [contribution guide](CONTRIBUTING.md) covers development commands; everyday use and every quickstart use `instrilo`.
 
 ```text
 CLI + web app

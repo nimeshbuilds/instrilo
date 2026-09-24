@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { archiveName, assertPackageFiles, killTree, metadata, repository, run } from './release-utils.mjs';
@@ -20,7 +20,7 @@ const report = {
   sha256: createHash('sha256').update(archiveBytes).digest('hex'),
   generatedAt: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.versions.node,
   status: 'running', checks: [],
-  scope: 'Clean global, local-hoisted and extracted installs of the release archive; installed CLI aliases/manual; native TypeScript generation, dependency preparation and execution; Python generation; local browser app assets and authenticated API; web/browser-launch readiness, opt-in/opt-out and failed-opener fallback using isolated opener fixtures; uninstall preserves user projects.',
+  scope: 'Clean global, local-hoisted and extracted installs of the release archive; installed CLI aliases/manual; copying tutorial workspaces without a source checkout and rejecting existing destinations; native TypeScript generation, dependency preparation and execution; Python generation; local browser app assets and authenticated API; web/browser-launch readiness, opt-in/opt-out and failed-opener fallback using isolated opener fixtures; uninstall preserves user projects.',
   limitations: ['Runtime dependencies require npm registry access.', 'No live provider login, paid model request, cloud deployment, native Windows operation or Python execution is claimed.', 'Browser launch checks use isolated OS-opener executable fixtures against the actual loopback server, printed session URL and authenticated API; no real desktop browser or native WSL handoff is claimed.'],
 };
 const root = await mkdtemp(join(tmpdir(), 'instrilo-release-'));
@@ -113,6 +113,35 @@ try {
   for (const term of ['subscriptions', 'deployment', 'approval', 'guidance', 'judge']) assert.ok(allManual.toLowerCase().includes(term), `Offline manual is missing ${term}.`);
   assert.ok((await readFile(join(installed, 'docs/CLI.md'), 'utf8')).length > 20_000);
   passed('global-install-aliases-manual', 'Installed without development dependencies; instrilo, in, nb-agent, Bash reserved-word invocation and comprehensive offline help all work.');
+
+  const tutorials = join(root, 'tutorial-workspace');
+  const tutorialSetup = JSON.parse((await cli(['tutorials', 'setup', tutorials])).stdout);
+  assert.equal(tutorialSetup.tutorials, 10);
+  const tutorialList = JSON.parse((await cli(['tutorials', 'list'])).stdout);
+  assert.equal(tutorialList.length, 10);
+  for (const tutorial of tutorialList) {
+    const guide = await readFile(join(tutorials, 'guides', `${tutorial.id}.md`), 'utf8');
+    assert.ok(guide.includes('instrilo tutorials setup'));
+    assert.ok(!guide.includes('node dist/cli.js'), 'Bundled user guides must use the installed CLI.');
+  }
+  assert.match((await cli(['tutorials', 'show', 'deployment-artifacts'])).stdout, /instrilo deployment /);
+  for (const path of ['foundations/answers.json', 'foundations/guidance/product.md', 'foundations/fixture.mjs', 'foundations/verify.mjs', 'delivery/fixture.mjs', 'delivery/verify.mjs']) {
+    const copied = join(tutorials, 'examples/quickstarts', path);
+    assert.equal((await lstat(copied)).isSymbolicLink(), false, 'Tutorial files must be independent copies.');
+    assert.deepEqual(await readFile(copied), await readFile(join(installed, 'examples/quickstarts', path)));
+  }
+  for (const path of ['dist', 'src', 'node_modules']) assert.equal(await exists(join(tutorials, path)), false, 'Tutorials must not require a source-checkout layout.');
+  await cli(['guidance', 'inspect', 'examples/quickstarts/foundations/guidance'], { cwd: tutorials });
+  const editable = join(tutorials, 'examples/quickstarts/foundations/guidance/product.md');
+  await writeFile(editable, 'User-owned tutorial edits must remain intact.\n');
+  await assert.rejects(cli(['tutorials', 'setup', tutorials]), 'Existing tutorial directories must be rejected.');
+  assert.equal(await readFile(editable, 'utf8'), 'User-owned tutorial edits must remain intact.\n');
+  assert.notEqual(await readFile(join(installed, 'examples/quickstarts/foundations/guidance/product.md'), 'utf8'), await readFile(editable, 'utf8'));
+  const occupied = join(root, 'occupied-tutorial-path');
+  await writeFile(occupied, 'Existing user file.\n');
+  await assert.rejects(cli(['tutorials', 'setup', occupied]), 'Existing files must be rejected.');
+  assert.equal(await readFile(occupied, 'utf8'), 'Existing user file.\n');
+  passed('installed-tutorial-workspace', 'The installed CLI copies bundled guidance and fixture helpers into a fresh workspace, works there without source/dependency symlinks, preserves independent user edits, and refuses existing file or directory destinations.');
 
   const projects = join(root, 'user-projects');
   await cli(['init', 'typescript-release', '--directory', projects, '--language', 'typescript']);
@@ -244,11 +273,16 @@ try {
   await command('tar', ['-xzf', tarball, '-C', extracted]);
   const extractedPackage = join(extracted, 'package');
   await command('npm', ['install', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: extractedPackage });
-  assert.equal((await command(process.execPath, ['dist/cli.js', '--version'], { cwd: extractedPackage })).stdout.trim(), metadata.version);
-  await command(process.execPath, ['dist/cli.js', 'guidance', 'inspect', 'examples/quickstarts/foundations/guidance'], { cwd: extractedPackage });
-  const extractedResult = JSON.parse((await command(process.execPath, ['dist/cli.js', 'run', tsProject, '--input', 'Extracted package works'], { cwd: extractedPackage })).stdout);
+  const linkedPrefix = join(root, 'linked-prefix');
+  await command('npm', ['link'], { cwd: extractedPackage, env: { ...env, npm_config_prefix: linkedPrefix } });
+  const linkedCli = join(linkedPrefix, 'bin', 'instrilo');
+  assert.equal((await command(linkedCli, ['--version'], { cwd: root })).stdout.trim(), metadata.version);
+  const linkedTutorials = join(root, 'linked-tutorials');
+  await command(linkedCli, ['tutorials', 'setup', linkedTutorials]);
+  await command(linkedCli, ['guidance', 'inspect', 'examples/quickstarts/foundations/guidance'], { cwd: linkedTutorials });
+  const extractedResult = JSON.parse((await command(linkedCli, ['run', tsProject, '--input', 'Extracted package works'], { cwd: root })).stdout);
   assert.equal(extractedResult.output, '[DEMO ONLY] Extracted package works');
-  passed('extracted-walkthrough-layout', 'The archive installs runtime-only dependencies without lifecycle scripts; node dist/cli.js, bundled guidance examples and actual TypeScript execution work without a source build.');
+  passed('extracted-package-link', 'The extracted archive installs runtime dependencies and npm link exposes the named instrilo CLI in an isolated prefix; tutorial setup, guidance inspection and actual TypeScript execution work outside the package directory.');
 
   await command('npm', ['uninstall', '--global', '--prefix', prefix, '--no-audit', '--no-fund', metadata.name]);
   for (const alias of ['instrilo', 'in', 'nb-agent']) assert.equal(await exists(join(prefix, 'bin', alias)), false);

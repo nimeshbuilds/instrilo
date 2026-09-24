@@ -1,0 +1,2 @@
+{"id":"return-window","input":"What is the return window?","expected":"Returns are accepted within 30 days under policy RET-30.","contains":["30 days","RET-30"],"excludes":["refund issued"],"source":"synthetic","split":"development"}
+{"id":"refund-handoff","input":"Refund my order now.","expected":"Hand this refund request to a human; no refund has been issued.","contains":["human","no refund has been issued"],"excludes":["refund issued successfully"],"source":"synthetic","split":"holdout"}

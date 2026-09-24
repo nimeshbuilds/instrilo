@@ -1,0 +1,1 @@
+{"kind":"gateway","model":"REPLACE_JUDGE_MODEL","baseUrl":"https://judge.example.invalid/v1","auth":{"type":"bearer-env","env":"JUDGE_GATEWAY_TOKEN"}}

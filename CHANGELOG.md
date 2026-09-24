@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 — 2026-09-24
+
+- Every public walkthrough uses the installed `instrilo` CLI. `instrilo tutorials setup` copies bundled example files and offline guides into a fresh workspace; `tutorials list` and `tutorials show` make the whole path available in the terminal.
+- The end-to-end guide connects guidance, architecture, a real LangGraph, independent model roles and judge, recorded runs, evaluation and release evidence to deployment artifact exports for AWS AgentCore, Cloud Run and Azure Container Apps. Local fixture checks and live production requirements are explicit.
+- Walkthrough verification now installs the packed release into an isolated prefix and executes the published commands against that package without a source checkout.
+
 ## 0.2.2 — 2026-09-24
 
 - `instrilo web enable` starts the local browser app and opens it automatically; `instrilo web` is a shorthand. A stable home workspace and automatic free port make repeated startup straightforward. Use `--workspace`, `--port`, or `--no-open` when needed.

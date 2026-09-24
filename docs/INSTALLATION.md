@@ -2,7 +2,7 @@
 
 Choose a built release or a source build. Both provide the same local app and CLI.
 
-The [v0.2.2 GitHub release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.2) includes the built CLI and local browser app in one package. Install once, then use `instrilo` from any project folder. You do not need Git, a source checkout, or a TypeScript build for normal use.
+The [v0.2.3 GitHub release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.3) includes the built CLI and local browser app in one package. Install once, then use `instrilo` from any project folder. You do not need Git, a source checkout, or a TypeScript build for normal use.
 
 ## Requirements
 
@@ -18,26 +18,35 @@ This package starts a local browser application. It is not a native desktop bina
 Run these commands in Bash or zsh:
 
 ```sh
-npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.2/nimeshbuilds-instrilo-0.2.2.tgz
+npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.3/nimeshbuilds-instrilo-0.2.3.tgz
 instrilo --version
 instrilo web enable
 ```
 
-The version command should print `0.2.2`. `instrilo web enable` opens the app in your default browser and chooses an available port. It uses `~/Instrilo/projects` as a stable home for projects, regardless of your current directory. Keep the terminal running, and stop the app with Ctrl+C. Running the command again reopens those projects.
+The version command should print `0.2.3`. `instrilo web enable` opens the app in your default browser and chooses an available port. It uses `~/Instrilo/projects` as a stable home for projects, regardless of your current directory. Keep the terminal running, and stop the app with Ctrl+C. Running the command again reopens those projects.
 
 ## Build from source instead
 
-With [Git](https://git-scm.com/downloads) installed:
+Use this path to contribute to Instrilo or modify its source. The release above is sufficient for every quickstart. With [Git](https://git-scm.com/downloads) installed:
 
 ```sh
 git clone https://github.com/nimeshbuilds/instrilo.git
 cd instrilo
 npm ci --ignore-scripts
 npm run build
-node dist/cli.js web enable
+npm link
+instrilo web enable
 ```
 
-That final command opens the same local app. No global link is required. For the other CLI examples in this guide, replace `instrilo` with `node dist/cli.js` from the repository root. Optionally run `npm link` to use `instrilo` from any directory; if you already have a release installed, choose which global installation you intend to keep first. See [source-link migration](#replace-a-source-linked-installation).
+`npm link` registers the built `instrilo` command, so every guide below uses the same command from any directory. Rebuild with `npm run build` after changing the source. If linking reports a permission error, run these commands from the source folder instead:
+
+```sh
+npm_config_prefix="$HOME/.local/instrilo" npm link
+export PATH="$HOME/.local/instrilo/bin:$PATH"
+instrilo --version
+```
+
+Use the PATH instructions below to keep this prefix in new terminals. Choose which global installation you intend to keep if you already installed a release; see [source-link migration](#replace-a-source-linked-installation).
 
 ## Open, customize, and stop the app
 
@@ -71,7 +80,7 @@ If the first command reports a permission error, choose a directory you own inst
 
 ```sh
 mkdir -p "$HOME/.local/instrilo"
-npm install --global --prefix "$HOME/.local/instrilo" https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.2/nimeshbuilds-instrilo-0.2.2.tgz
+npm install --global --prefix "$HOME/.local/instrilo" https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.3/nimeshbuilds-instrilo-0.2.3.tgz
 export PATH="$HOME/.local/instrilo/bin:$PATH"
 instrilo --version
 instrilo web enable
@@ -106,12 +115,12 @@ The [complete CLI manual](CLI.md) is also available offline through `instrilo he
 
 ## Download and verify before installation
 
-Open the [release assets](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.2), download `nimeshbuilds-instrilo-0.2.2.tgz` and `SHA256SUMS` into an empty directory, and follow that release's included `INSTALL.md` instructions to verify SHA-256 before installation. A checksum detects a damaged or changed download; compare against the trusted release page.
+Open the [release assets](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.3), download `nimeshbuilds-instrilo-0.2.3.tgz` and `SHA256SUMS` into an empty directory, and follow that release's included `INSTALL.md` instructions to verify SHA-256 before installation. A checksum detects a damaged or changed download; compare against the trusted release page.
 
 You can then install the downloaded archive directly from that directory:
 
 ```sh
-npm install --global ./nimeshbuilds-instrilo-0.2.2.tgz
+npm install --global ./nimeshbuilds-instrilo-0.2.3.tgz
 instrilo --version
 ```
 
@@ -122,7 +131,7 @@ This still downloads runtime dependencies. Add the user-owned `--prefix` option 
 Stop the app with Ctrl+C. Open the [releases page](https://github.com/nimeshbuilds/instrilo/releases), read the target release's notes, then install its exact package URL. To install or reinstall this version:
 
 ```sh
-npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.2/nimeshbuilds-instrilo-0.2.2.tgz
+npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.3/nimeshbuilds-instrilo-0.2.3.tgz
 instrilo --version
 ```
 
@@ -134,7 +143,7 @@ If you previously ran `npm link`, remove that global link before installing the 
 
 ```sh
 npm uninstall --global @nimeshbuilds/instrilo
-npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.2/nimeshbuilds-instrilo-0.2.2.tgz
+npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.3/nimeshbuilds-instrilo-0.2.3.tgz
 instrilo --version
 ```
 
@@ -156,11 +165,20 @@ npm uninstall --global --prefix "$HOME/.local/instrilo" @nimeshbuilds/instrilo
 
 This removes the installed app and its command aliases. It leaves your projects, reports, generated environments, provider logins, and any separately installed container engine intact. Remove the PATH line if you no longer use that prefix. Review project folders before deleting them yourself. Instrilo's deployment cleanup commands separately handle the exact container resources it owns; see the [deployment guide](DEPLOYMENT.md).
 
-## Source installation for the ten walkthroughs
+## Follow the ten walkthroughs
 
-The published quickstarts use repository fixtures and exact `node dist/cli.js` commands. Complete [Build from source instead](#build-from-source-instead), stop the app with Ctrl+C if it is running, and follow a guide from that repository root in one Bash session. The [ten scenario guides](https://nimeshbuilds.github.io/instrilo/#quickstarts) label the fixture checks and any optional live-account steps.
+The [ten scenario guides](https://nimeshbuilds.github.io/instrilo/#quickstarts) use the installed `instrilo` command. They do not require Git or a source build. If the app is running in your terminal, stop it with Ctrl+C first. Use Bash, and keep the same terminal session throughout each guide; in a zsh terminal, run `bash` first.
 
-Keep a source checkout separate from your global release installation. Normal release use does not require the walkthrough fixtures; [Start from the CLI](#start-from-the-cli) above works immediately after installation. Contributors can launch directly from TypeScript with `npm run cli -- web enable`.
+Prepare the bundled tutorial inputs once in a fresh directory:
+
+```sh
+instrilo tutorials setup ./instrilo-tutorials
+cd ./instrilo-tutorials
+```
+
+The CLI copies the examples into that folder. Follow the selected guide from there; it creates its own project under `.studio/tutorials/`. For another guide, reuse this prepared folder. If you want a completely fresh run, choose a new tutorial directory rather than overwriting your earlier work.
+
+The [complete agent walkthrough](https://nimeshbuilds.github.io/instrilo/quickstarts/deployment-artifacts/) covers product guidance, architecture, a LangGraph runtime, an independent judge, evaluations, run graphs, release evidence, and cloud deployment artifacts. Every guide states which local fixtures it tests and which account-dependent steps need your own verification.
 
 ## Troubleshooting
 
