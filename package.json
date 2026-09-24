@@ -1,6 +1,6 @@
 {
   "name": "@nimeshbuilds/instrilo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Build with intent. Ship with evidence. Guidance-driven agent creation for Python and TypeScript.",
@@ -9,6 +9,27 @@
     "in": "dist/cli.js",
     "nb-agent": "dist/cli.js"
   },
+  "files": [
+    "dist/**/*.js",
+    "dist/adapter-worker.mjs",
+    "dist/templates/*.tpl",
+    "dist/web/*.css",
+    "dist/web/*.svg",
+    "dist/web/*.html",
+    "docs/*.md",
+    "assets/brand/*.svg",
+    "assets/brand/*.png",
+    "assets/brand/README.md",
+    "examples/quickstarts/**/*.mjs",
+    "examples/quickstarts/**/*.json",
+    "examples/quickstarts/**/*.jsonl",
+    "examples/quickstarts/**/*.md",
+    "website/scenarios/*.json",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
   "scripts": {
     "build": "tsc && node scripts/copy-assets.mjs",
     "dev": "tsx src/cli.ts app",
@@ -19,7 +40,10 @@
     "docs:cli": "node scripts/generate-cli-docs.mjs",
     "docs:check": "node scripts/generate-cli-docs.mjs --check",
     "site:build": "node scripts/build-site.mjs",
-    "test:scenarios": "node scripts/test-scenarios.mjs"
+    "test:scenarios": "node scripts/test-scenarios.mjs",
+    "prepack": "node scripts/prepack.mjs",
+    "package:release": "node scripts/package-release.mjs",
+    "test:release": "node scripts/test-release.mjs"
   },
   "engines": {
     "node": ">=22"

@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-09-24
+
+- Ready-built GitHub release package containing both the CLI and local browser app; install with npm without cloning or compiling Instrilo. The package includes the `instrilo`, `in`, and `nb-agent` commands.
+- Release checksums, installation instructions, and clean-install verification for the packaged CLI/app. Node.js remains a prerequisite; npm installs runtime dependencies.
+- Release-first website and README, with user-owned installation, upgrades, source-link migration, uninstalling, and clear source setup for the ten exact walkthroughs.
 
 - Branded GitHub Pages documentation with ten practical walkthroughs, source-exact tested command blocks, expected results, troubleshooting, cleanup, and fingerprint-bound verification records. Pages publication is gated on running the walkthroughs.
 - Platform-specific deployment contracts and detailed prerequisite/runbooks for local, Docker, AgentCore, Cloud Run and Azure Container Apps; corrected Azure managed-identity bootstrap and platform architecture handling.

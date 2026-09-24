@@ -3,7 +3,7 @@ import { assertGenerationReady, withGenerationLock } from './regeneration.js';
 import { access, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { createHash, randomUUID } from 'node:crypto';
 import { generate } from './providers.js';
 import { inspectGuidance, loadSpec, readCases } from './core.js';
@@ -48,7 +48,7 @@ async function runProjectUnlocked(spec: ProjectSpec, directory: string, input: s
     args = [filename, '--input', input];
   } else {
     command = process.execPath;
-    const localTsx = fileURLToPath(new URL('../node_modules/tsx/dist/cli.mjs', import.meta.url));
+    const localTsx = createRequire(import.meta.url).resolve('tsx/cli');
     args = [localTsx, filename, '--input', input];
   }
   const stdout = await new Promise<string>((res, rej) => {

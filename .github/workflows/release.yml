@@ -1,0 +1,126 @@
+name: Build and verify release package
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CI: 'true'
+  OTEL_SDK_DISABLED: 'true'
+  CREWAI_TRACING_ENABLED: 'false'
+  LANGSMITH_TRACING: 'false'
+  OPENAI_AGENTS_DISABLE_TRACING: '1'
+
+jobs:
+  build:
+    name: Build and test the release contents
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Check that the tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          node --input-type=module -e 'import fs from "node:fs"; const version = JSON.parse(fs.readFileSync("package.json")).version; if (process.env.GITHUB_REF_NAME !== `v${version}` || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Tag and stable package version must match");'
+      - name: Install source and Python dependencies
+        run: |
+          npm ci --ignore-scripts
+          python -m pip install uv==0.11.26
+      - name: Check the source, tests, and every documented walkthrough
+        env:
+          NB_AGENT_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: |
+          npm run check
+          npm run build
+          npm run docs:check
+          npm test
+          npm run test:scenarios
+      - name: Package compiled CLI, local app, templates, and documentation
+        run: npm run package:release
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-package
+          path: |
+            release/*.tgz
+            release/SHA256SUMS
+            release/INSTALL.md
+          if-no-files-found: error
+
+  install:
+    name: Install package / ${{ matrix.os }} / Node ${{ matrix.node }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-package
+          path: release
+      - name: Verify checksum and install the built app and CLI without a source build
+        run: |
+          shasum -a 256 -c SHA256SUMS
+          set -- *.tgz
+          test "$#" -eq 1
+          node ../scripts/test-release.mjs --tarball "$1" --output "verification-${{ matrix.os }}-node${{ matrix.node }}.json"
+        working-directory: release
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-verification-${{ matrix.os }}-node${{ matrix.node }}
+          path: release/verification-*.json
+          if-no-files-found: error
+
+  publish:
+    name: Publish the verified release
+    if: startsWith(github.ref, 'refs/tags/') && github.event_name == 'push'
+    needs: [build, install]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-package
+          path: release
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-verification-*
+          merge-multiple: true
+          path: release
+      - name: Publish package, checksum, installation guide, and platform test records
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" release/*.tgz release/SHA256SUMS release/INSTALL.md release/verification-*.json --verify-tag --title "Instrilo $RELEASE_TAG — built app and CLI" --notes-file release/INSTALL.md

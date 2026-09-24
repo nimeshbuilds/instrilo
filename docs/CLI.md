@@ -2,7 +2,7 @@
 
 Generated from the CLI itself. Regenerate with `npm run docs:cli` after changing commands or manual topics.
 
-Install from source with `npm ci && npm run build && npm link`. Without linking, replace `instrilo` with `npm run cli --` in the examples. `PROJECT`, `RUN_ID`, `HASH`, and uppercase example values are placeholders.
+Install the built app and CLI from the [GitHub release](https://github.com/nimeshbuilds/instrilo/releases) using the [installation guide](INSTALLATION.md). Source contributors can use `npm ci && npm run build && npm link`; without linking, replace `instrilo` with `npm run cli --` in the examples. `PROJECT`, `RUN_ID`, `HASH`, and uppercase example values are placeholders.
 
 This reference contains 140 command entries (including groups and the root) and 27 offline manual topics.
 

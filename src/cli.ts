@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { version } from './version.js';
 import { withCliCancellation } from './cli-runtime.js';
 import { registerProjectCommands } from './cli-extra.js';
 import { registerQualityCommands } from './cli-quality.js';
@@ -23,7 +24,7 @@ import { evaluateProject, runProject, saveReport, compareReports, sanitizeError,
 import { startServer } from './server.js';
 import type { GuidanceAnswers, Language, Framework, Target } from './types.js';
 
-const program = new Command().name('instrilo').version('0.2.0').description('Instrilo — turn product guidance into agents, evaluations and deployment artifacts.');
+const program = new Command().name('instrilo').version(version).description('Instrilo — turn product guidance into agents, evaluations and deployment artifacts.');
 const print = (value: unknown) => console.log(JSON.stringify(value, null, 2));
 const manifest = (path: string) => path.endsWith('.yaml') || path.endsWith('.yml') || path.endsWith('.json') ? resolve(path) : resolve(path, manifestName);
 

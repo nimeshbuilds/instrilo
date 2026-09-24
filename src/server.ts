@@ -9,6 +9,7 @@ import { readFile, writeFile, readdir, mkdir, lstat, unlink, open, mkdtemp, rm }
 import { constants } from 'node:fs';
 import { resolve, join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { version } from './version.js';
 import { tmpdir } from 'node:os';
 import { randomBytes, timingSafeEqual, randomUUID, createHash } from 'node:crypto';
 import YAML from 'yaml';
@@ -91,7 +92,7 @@ export async function startServer(options: { workspace: string; port?: number })
         })();
         return json({ jobId: job.id }, 202);
       }
-      if (url.pathname === '/api/meta') return json({ version: '0.2.0', workspace: root, providers: providerCapabilities, questions: guidanceQuestions, defaultSpec: defaultSpec('my-agent'), frameworks: ['native', 'langgraph', 'openai-agents', 'crewai'], targets: ['local', 'docker', 'aws-agentcore', 'cloud-run', 'azure-container-apps'] });
+      if (url.pathname === '/api/meta') return json({ version, workspace: root, providers: providerCapabilities, questions: guidanceQuestions, defaultSpec: defaultSpec('my-agent'), frameworks: ['native', 'langgraph', 'openai-agents', 'crewai'], targets: ['local', 'docker', 'aws-agentcore', 'cloud-run', 'azure-container-apps'] });
       if (url.pathname === '/api/projects' && req.method === 'GET') return json(await listProjects(root));
       if (url.pathname === '/api/projects' && req.method === 'POST') { const body = await readBody(req); const created = await createProject(root, { name: body.name, language: body.language || 'typescript' }); return json({ id: body.name, ...created }, 201); }
       const jm = url.pathname.match(/^\/api\/jobs\/([a-f0-9-]+)(\/cancel)?$/);

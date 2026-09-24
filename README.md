@@ -9,9 +9,9 @@
 
 A local CLI and web app for turning product guidance into an owned agent project. Choose Python or TypeScript, a framework, independent builder/runtime/judge connections, evaluation cases, and delivery artifacts.
 
-Instrilo 0.2 is a source release with exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
+Instrilo 0.2.1 includes a ready-built app and CLI package for Node.js. It provides exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
 
-[Website & ten practical quickstarts](https://nimeshbuilds.github.io/instrilo/) · [CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
+[Install the release](docs/INSTALLATION.md) · [Website & ten practical quickstarts](https://nimeshbuilds.github.io/instrilo/) · [CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
 
 The quickstarts cover TypeScript, Python, separate model connections, HTTP tools, LangGraph, subscription setup, evaluations, human review, approvals/replay, and cloud packaging. Their published command blocks are executed in isolated workspaces before the documentation site is deployed. Each guide identifies local fixtures, expected results, and manual account-dependent steps; passing a tutorial is not a claim that every provider or cloud account has been verified. GitHub Pages hosts the documentation; the Instrilo app runs locally.
 
@@ -21,23 +21,19 @@ Start from your product's guidance, keep the code you generate, and choose the m
 
 Link reviewed requirements to exact evaluation cases, preserve custom code during regeneration, review outputs without seeing the judge's verdict, and apply a release policy. Record supported runs, approve exact tool calls, replay frozen responses, and inspect the observed execution graph. The [roadmap](docs/ROADMAP.md) distinguishes implemented local workflows from future hosted and framework expansion. The [competitive comparison](docs/COMPETITORS.md) explains the existing alternatives and the differentiation we still need to validate.
 
-## Start the app
+## Install the app and CLI
 
-Requires Node.js 22 or newer and npm on macOS, Linux, or WSL. Native Windows support is not yet verified. Clone the source and run:
-
-```sh
-git clone https://github.com/nimeshbuilds/instrilo.git
-cd instrilo
-npm ci --ignore-scripts
-npm run build
-npm start -- --workspace .studio/projects --port 4317
-```
-
-Open the authenticated local URL printed in the terminal. The app listens on `127.0.0.1`; keep its session URL private. To run directly from source while developing:
+Requires [Node.js 22 or newer](https://nodejs.org/en/download) and npm on macOS, Linux, or WSL. Native Windows support is not yet verified. Install the built [v0.2.1 release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.1):
 
 ```sh
-npm run dev -- --workspace .studio/projects --port 4317
+npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.1/nimeshbuilds-instrilo-0.2.1.tgz
+instrilo --version
+instrilo app --workspace "$HOME/Instrilo/projects" --port 0
 ```
+
+This installs the compiled CLI and local browser app together; no clone or source build is needed. npm downloads the package's runtime dependencies. Open the authenticated local URL printed in the terminal and keep that terminal running. The app listens on `127.0.0.1`; keep its session URL private. Stop it with Ctrl+C.
+
+If your npm global directory is not writable, use the [installation guide's user-owned prefix](docs/INSTALLATION.md#install-without-administrator-access); do not add `sudo`. The guide also covers checksums, upgrades, uninstalling, PATH issues, and installation from source. This is a GitHub release package, not an npm registry publication or a native desktop executable.
 
 Create a project, import guidance or complete the interview, then use **Configuration** to select connections and framework. **Build project** previews file changes; **Apply reviewed build** applies that exact plan. **Install dependencies** prepares its runtime. The **Playground**, **Evaluations**, and **Code & delivery** tabs run, inspect, and export the result. **Evidence & review** links requirements and reviews reports; **Runs & approvals** records, approves, resumes, and replays supported runs.
 
@@ -45,20 +41,20 @@ New projects use an explicit offline demo. It returns labeled demonstration outp
 
 ## Run the same workflow from the CLI
 
-After building, optionally run `npm link` to make `instrilo`, its short alias `in`, and the legacy alias `nb-agent` available. For example, `instrilo app` starts the workbench. Run `npm link` again after updating an existing installation to add the new alias. The three commands expose the same functionality, and existing `agent-studio.yaml` manifests and `NB_AGENT_PYTHON` settings remain compatible. No npm registry release is required for this source installation.
+The release installs `instrilo`, its short alias `in`, and the legacy alias `nb-agent`. All three commands expose the same functionality. Existing `agent-studio.yaml` manifests and `NB_AGENT_PYTHON` settings remain compatible. If you previously used `npm link`, follow the [source-install migration steps](docs/INSTALLATION.md#replace-a-source-linked-installation).
 
 `in help --all` works directly in zsh. In Bash and POSIX sh, `in` is a reserved word: use `command in help --all` (or `instrilo help --all`). `command in` works in all three shells.
 
 The CLI and app use the same project files and validation. This example runs without model credentials:
 
 ```sh
-npm run cli -- init support-agent --directory .studio/projects --language typescript
-npm run cli -- guidance create .studio/projects/support-agent/guidance
-npm run cli -- validate .studio/projects/support-agent
-npm run cli -- build .studio/projects/support-agent
-npm run cli -- prepare .studio/projects/support-agent
-npm run cli -- run .studio/projects/support-agent --input "Draft a response to a missing delivery."
-npm run cli -- eval .studio/projects/support-agent --split development
+instrilo init support-agent --directory .studio/projects --language typescript
+instrilo guidance create .studio/projects/support-agent/guidance
+instrilo validate .studio/projects/support-agent
+instrilo build .studio/projects/support-agent
+instrilo prepare .studio/projects/support-agent
+instrilo run .studio/projects/support-agent --input "Draft a response to a missing delivery."
+instrilo eval .studio/projects/support-agent --split development
 ```
 
 `guidance create` asks ten questions in an interactive terminal. For unattended creation, provide a JSON answer object with `--answers ./answers.json`; its keys are `purpose`, `users`, `inputs`, `outputs`, `success`, `tools`, `boundaries`, `escalation`, `examples`, and `operations`. Blank answers remain explicitly undecided. The command preserves an existing interview document.
@@ -66,8 +62,8 @@ npm run cli -- eval .studio/projects/support-agent --split development
 To start with existing instructions:
 
 ```sh
-npm run cli -- guidance inspect /absolute/path/to/product-guidance
-npm run cli -- create research-agent --guidance /absolute/path/to/product-guidance --directory .studio/projects
+instrilo guidance inspect /absolute/path/to/product-guidance
+instrilo create research-agent --guidance /absolute/path/to/product-guidance --directory .studio/projects
 ```
 
 Eligible guidance is copied into the new project; the original directory is not modified. Add `--config ./agent-studio.yaml` to use an existing complete configuration. Explicit language/framework/target flags override its corresponding values.
@@ -75,8 +71,8 @@ Eligible guidance is copied into the new project; the original directory is not 
 The app's guidance editor supports existing eligible files and detects concurrent edits before saving. Builder follow-up answers are saved in separate clarification documents. The CLI also supports a builder-led follow-up interview:
 
 ```sh
-npm run cli -- plan .studio/projects/support-agent
-npm run cli -- plan .studio/projects/support-agent --interview
+instrilo plan .studio/projects/support-agent
+instrilo plan .studio/projects/support-agent --interview
 ```
 
 Use `--apply` to save the proposed instructions. A configured live builder consumes its provider allowance; `--interview` can invoke it again after your answers. In the app, saving clarification answers does not automatically invoke the builder again.
@@ -84,7 +80,7 @@ Use `--apply` to save the proposed instructions. A configured live builder consu
 After changing configuration or guidance, rebuild before running or evaluating:
 
 ```sh
-npm run cli -- build .studio/projects/support-agent --overwrite
+instrilo build .studio/projects/support-agent --overwrite
 ```
 
 Rebuilding compares the new output, retained baseline, and current files. Unowned files and unchanged-generator customizations survive; conflicting edits stop the transaction. Preview with `generation plan PROJECT`; use `--merge` for conservative non-overlapping text merges and `--expected-plan HASH` to apply only the reviewed plan. Keep version control as an independent backup. Legacy builds have no trustworthy baseline for existing edits; see [regeneration and migration](docs/REGENERATION.md).
@@ -178,10 +174,10 @@ instrilo export PROJECT --output project.zip
 Generated Python projects require Python 3.11–3.13 and `uv` for the built-in dependency preparation command. Keep different generated framework projects in separate environments.
 
 ```sh
-npm run cli -- init python-agent --directory .studio/projects --language python
-npm run cli -- build .studio/projects/python-agent
-npm run cli -- prepare .studio/projects/python-agent
-npm run cli -- run .studio/projects/python-agent --input "Hello"
+instrilo init python-agent --directory .studio/projects --language python
+instrilo build .studio/projects/python-agent
+instrilo prepare .studio/projects/python-agent
+instrilo run .studio/projects/python-agent --input "Hello"
 ```
 
 Set `NB_AGENT_PYTHON` to an explicit interpreter path when needed. The runner first uses the generated project's `.venv`, then `NB_AGENT_PYTHON`, then `python3`. `prepare` passes the explicit interpreter to `uv` when supplied.
@@ -202,8 +198,8 @@ CLI runtimes require the native framework, local target, and no portable HTTP to
 Credentials are environment-variable references, never secret values in the manifest. Set the referenced variables before starting the app or CLI. Gateways can use API keys, existing bearer tokens/JWTs, or OAuth client credentials. Inbound JWT settings authenticate callers to the generated agent; they are separate from outbound provider credentials and from the local app's session token.
 
 ```sh
-npm run cli -- providers
-npm run cli -- doctor .studio/projects/support-agent
+instrilo providers
+instrilo doctor .studio/projects/support-agent
 ```
 
 `doctor` checks configuration, environment-variable presence, installed CLIs and supported credential-status commands. It does not prove an API credential, model, subscription entitlement, or cloud account works. See [provider setup and current restrictions](docs/PROVIDERS.md).
@@ -213,8 +209,8 @@ npm run cli -- doctor .studio/projects/support-agent
 Edit cases in the app or the project's `evals/cases.jsonl`. Each case has an ID, input, optional reference/checks, `source` (`reviewed` or `synthetic`), and `split` (`development` or `holdout`). Replace the synthetic seed cases with task-specific examples and calibrate judge outputs against human labels.
 
 ```sh
-npm run cli -- eval .studio/projects/support-agent --split holdout --output ./holdout-report.json
-npm run cli -- compare ./previous-report.json ./holdout-report.json
+instrilo eval .studio/projects/support-agent --split holdout --output ./holdout-report.json
+instrilo compare ./previous-report.json ./holdout-report.json
 ```
 
 An empty holdout split fails explicitly. Reports preserve available traces and dataset/case/judge hashes. Comparison warns about changed evaluation conditions and avoids treating changed case contents as the same regression. Demo reports are smoke checks only.
@@ -226,12 +222,26 @@ The app exports a ZIP containing generated source, a portable Instrilo manifest,
 Generation supports local, Docker, AWS AgentCore, Google Cloud Run, and Azure Container Apps artifacts. Selected coding/desktop hosts receive instruction/configuration packages and MCP entry points. ChatGPT selection also generates a remote HTTP MCP entry point; external HTTPS hosting, an authorization service, and actual ChatGPT connection setup remain operator tasks. See [chat-host setup](docs/CHAT-HOSTS.md).
 
 ```sh
-npm run cli -- deploy .studio/projects/support-agent
+instrilo deploy .studio/projects/support-agent
 ```
 
 Without `--execute`, this displays the selected target and output directory. After reviewing target-specific scripts and supplying account IDs, identities, secrets, and cloud CLIs, `deploy --execute` explicitly runs the generated target script. That action can create billable resources. No real cloud deployment was performed while validating this repository.
 
 The app itself is a local workbench. It does not supply a hosted identity provider, tenant administration, durable approval inbox, persistent workflow checkpointing, or a managed deployment control plane. See [delivery requirements](docs/DEPLOYMENT.md), the [full product specification](docs/PRODUCT-SPEC.md), and the [prioritized roadmap](docs/ROADMAP.md).
+
+## Follow the ten walkthroughs or develop from source
+
+The [ten tested quickstarts](https://nimeshbuilds.github.io/instrilo/#quickstarts) use repository fixtures and source-relative commands. For those exact guides, keep a source checkout separate from your global release installation:
+
+```sh
+git clone https://github.com/nimeshbuilds/instrilo.git
+cd instrilo
+npm ci --ignore-scripts
+npm run build
+node dist/cli.js help --all
+```
+
+Follow the guides from this repository root using their `node dist/cli.js` commands. The global release is sufficient for normal app and CLI use. Source contributors can run `npm run dev -- --workspace .studio/projects --port 0` to start the app directly from TypeScript.
 
 ## Architecture and tests
 
