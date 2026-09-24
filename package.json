@@ -6,6 +6,7 @@
   "description": "Build with intent. Ship with evidence. Guidance-driven agent creation for Python and TypeScript.",
   "bin": {
     "instrilo": "dist/cli.js",
+    "in": "dist/cli.js",
     "nb-agent": "dist/cli.js"
   },
   "scripts": {

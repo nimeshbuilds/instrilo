@@ -43,7 +43,9 @@ New projects use an explicit offline demo. It returns labeled demonstration outp
 
 ## Run the same workflow from the CLI
 
-After building, optionally run `npm link` to make the `instrilo` command available. For example, `instrilo app` starts the workbench. The `nb-agent` command remains an alias, and existing `agent-studio.yaml` manifests and `NB_AGENT_PYTHON` settings remain compatible. No npm registry release is required for this source installation.
+After building, optionally run `npm link` to make `instrilo`, its short alias `in`, and the legacy alias `nb-agent` available. For example, `instrilo app` starts the workbench. Run `npm link` again after updating an existing installation to add the new alias. The three commands expose the same functionality, and existing `agent-studio.yaml` manifests and `NB_AGENT_PYTHON` settings remain compatible. No npm registry release is required for this source installation.
+
+`in help --all` works directly in zsh. In Bash and POSIX sh, `in` is a reserved word: use `command in help --all` (or `instrilo help --all`). `command in` works in all three shells.
 
 The CLI and app use the same project files and validation. This example runs without model credentials:
 

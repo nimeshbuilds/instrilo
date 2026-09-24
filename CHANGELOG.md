@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `in` as a CLI executable alias for `instrilo`, alongside `nb-agent`; document `command in` for Bash/POSIX sh.
+
 ## 0.2.0 — 2026-09-24
 
 - Comprehensive CLI with nested help, an offline searchable manual, examples, machine-readable command metadata, and validated project/configuration/guidance/tool/dataset operations.

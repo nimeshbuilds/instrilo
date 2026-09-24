@@ -3,6 +3,9 @@ import { Command } from 'commander';
 export const manuals:Record<string,{title:string;body:string}>={
  overview:{title:'Instrilo: the complete agent workflow',body:`Instrilo turns product guidance into owned Python or TypeScript agent projects.
 The local app and CLI share agent-studio.yaml, guidance, generated source and evals.
+The installed commands instrilo, in and nb-agent invoke the same CLI.
+Use in directly in zsh; in Bash/POSIX sh use command in because in is a
+reserved word. For example: command in help --all.
 
 Start here:
   instrilo explain quickstart
@@ -28,6 +31,9 @@ environment variables. No hosted account is required for the core workbench.`},
  quickstart:{title:'An executable offline quickstart',body:`Prerequisites: Node.js >=22 and npm on macOS, Linux or WSL. For Python use
 Python 3.11–3.13 plus uv. Native Windows cancellation/install need further work.
 From the source checkout: npm ci --ignore-scripts && npm run build && npm link
+npm link installs instrilo plus the in and nb-agent aliases. Repeat it after
+updating an existing installation to add the new alias. In zsh: in --help.
+In Bash/POSIX sh: command in --help (in is a reserved word).
 Without npm link, replace instrilo with npm run cli -- in every example.
 
   instrilo init support-agent --directory .studio/projects --language typescript
