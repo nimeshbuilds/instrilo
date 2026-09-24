@@ -204,35 +204,62 @@ test('demo is explicitly marked, deterministic and does not invent judgement sco
   assert(providerCapabilities.every(capability => capability.notes.length > 0));
 });
 
-test('provider cancellation and timeout kill a CLI descendant that ignores SIGTERM', { skip: process.platform === 'win32' }, async () => {
+test('provider cancellation and timeout kill a CLI descendant that ignores SIGTERM', { skip: process.platform === 'win32' }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'nb-provider-tree-'));
   const previousPath = process.env.PATH;
+  const realTimeout = AbortSignal.timeout.bind(AbortSignal);
   process.env.PATH = `${directory}:${previousPath}`;
   try {
     for (const mode of ['cancel', 'timeout']) {
+      const launcherReady = join(directory, `${mode}-launcher`);
       const ready = join(directory, `${mode}-ready`);
+      const probe = join(directory, `${mode}-probe`);
       const marker = join(directory, `${mode}-late-write`);
-      const descendant = `process.on('SIGTERM',()=>{});require('node:fs').writeFileSync(${JSON.stringify(ready)},String(process.pid));setTimeout(()=>require('node:fs').writeFileSync(${JSON.stringify(marker)},'escaped cancellation'),900);setInterval(()=>{},1000);`;
-      const launcher = `#!${process.execPath}\nprocess.on('SIGTERM',()=>{});require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(descendant)}],{stdio:'ignore'});process.stdin.resume();setInterval(()=>{},1000);\n`;
+      const descendant = `const fs=require('node:fs');process.on('SIGTERM',()=>{});fs.writeFileSync(${JSON.stringify(ready)},String(process.pid));setInterval(()=>{if(fs.existsSync(${JSON.stringify(probe)}))fs.writeFileSync(${JSON.stringify(marker)},'escaped cancellation');},10);`;
+      const launcher = `#!${process.execPath}\nprocess.on('SIGTERM',()=>{});require('node:fs').writeFileSync(${JSON.stringify(launcherReady)},String(process.pid));require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(descendant)}],{stdio:'ignore'});process.stdin.resume();setInterval(()=>{},1000);\n`;
       await writeFile(join(directory, 'claude'), launcher, { mode: 0o755 });
       const controller = new AbortController();
-      const result = generate({ kind: 'claude-code', auth: { type: 'none' }, timeoutMs: mode === 'timeout' ? 350 : 5000 }, { ...request, signal: controller.signal }).then(
+      const timeoutController = new AbortController();
+      // Two Node processes may take longer than 350 ms to start on a busy CI runner.
+      // Gate this test's deadline on readiness, then expire it using the real timer.
+      const timeoutMock = mode === 'timeout' ? t.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {
+        assert.equal(milliseconds, 350);
+        return timeoutController.signal;
+      }) : undefined;
+      let settled = false;
+      const result = generate({ kind: 'claude-code', auth: { type: 'none' }, timeoutMs: mode === 'timeout' ? 350 : 30_000 }, { ...request, signal: controller.signal }).then(
         () => ({ error: undefined }), error => ({ error }),
-      );
+      ).finally(() => { settled = true; });
+      let completionTimer: ReturnType<typeof setTimeout> | undefined;
       try {
         let childReady = false;
-        for (let attempt = 0; attempt < 40; attempt++) {
+        const readinessDeadline = Date.now() + 10_000;
+        while (!settled && Date.now() < readinessDeadline) {
           try { await access(ready); childReady = true; break; } catch { await new Promise(resolve => setTimeout(resolve, 10)); }
         }
-        assert(childReady, 'The child must start before checking cancellation');
+        assert(childReady, `The ${mode} child must start before checking cancellation (10 second startup budget)`);
         if (mode === 'cancel') controller.abort();
-        const outcome = await result;
+        else {
+          assert.equal(timeoutMock!.mock.callCount(), 1, 'The provider must request its configured timeout.');
+          const timeout = realTimeout(350);
+          timeout.addEventListener('abort', () => timeoutController.abort(timeout.reason), { once: true });
+        }
+        const outcome = await Promise.race([result, new Promise<never>((_resolve, reject) => {
+          completionTimer = setTimeout(() => reject(new Error(`Provider did not finish after ${mode}`)), 5000);
+        })]);
         assert(outcome.error instanceof Error && /cancelled or timed out/.test(outcome.error.message));
+        // Only invite the late write after termination has completed, so slow startup
+        // cannot write the failure marker before cancellation is even requested.
+        await writeFile(probe, 'check for a surviving descendant');
         await new Promise(resolve => setTimeout(resolve, 950));
         await assert.rejects(access(marker), { code: 'ENOENT' });
       } finally {
-        controller.abort(); await result;
+        clearTimeout(completionTimer);
+        timeoutMock?.mock.restore();
+        controller.abort();
+        try { process.kill(-Number(await readFile(launcherReady, 'utf8')), 'SIGKILL'); } catch { /* Already terminated. */ }
         try { process.kill(Number(await readFile(ready, 'utf8')), 'SIGKILL'); } catch { /* Already terminated. */ }
+        await result;
       }
     }
   } finally { process.env.PATH = previousPath; await rm(directory, { recursive: true, force: true }); }
