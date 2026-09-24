@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { archiveName, assertPackageFiles, killTree, metadata, repository, run } from './release-utils.mjs';
@@ -20,8 +20,8 @@ const report = {
   sha256: createHash('sha256').update(archiveBytes).digest('hex'),
   generatedAt: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.versions.node,
   status: 'running', checks: [],
-  scope: 'Clean global, local-hoisted and extracted installs of the release archive; installed CLI aliases/manual; native TypeScript generation, dependency preparation and execution; Python generation; local browser app assets and authenticated API; uninstall preserves user projects.',
-  limitations: ['Runtime dependencies require npm registry access.', 'No live provider login, paid model request, cloud deployment, native Windows operation or Python execution is claimed.'],
+  scope: 'Clean global, local-hoisted and extracted installs of the release archive; installed CLI aliases/manual; native TypeScript generation, dependency preparation and execution; Python generation; local browser app assets and authenticated API; web/browser-launch readiness, opt-in/opt-out and failed-opener fallback using isolated opener fixtures; uninstall preserves user projects.',
+  limitations: ['Runtime dependencies require npm registry access.', 'No live provider login, paid model request, cloud deployment, native Windows operation or Python execution is claimed.', 'Browser launch checks use isolated OS-opener executable fixtures against the actual loopback server, printed session URL and authenticated API; no real desktop browser or native WSL handoff is claimed.'],
 };
 const root = await mkdtemp(join(tmpdir(), 'instrilo-release-'));
 const env = {};
@@ -42,6 +42,47 @@ const stopApp = async () => {
     child.once('close', () => { clearTimeout(timer); resolveStop(); });
     killTree(child);
   });
+};
+const startInstalledApp = async (binary, arguments_, appEnv = env) => {
+  assert.equal(app, undefined, 'Stop the previous app before starting another installed launch check.');
+  app = spawn(binary, arguments_, { cwd: root, env: appEnv, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = app;
+  let captured = '', errors = '';
+  const url = await new Promise((resolveUrl, reject) => {
+    const timer = setTimeout(() => reject(new Error('Installed app did not become ready within 15 seconds.')), 15_000);
+    const fail = message => { clearTimeout(timer); reject(new Error(message)); };
+    child.stdout.on('data', chunk => {
+      captured += chunk;
+      if (captured.length > 65_536) { fail('Installed app exceeded startup output limit.'); killTree(child, 'SIGKILL'); return; }
+      const match = captured.match(/http:\/\/127\.0\.0\.1:\d+\/#token=[0-9a-f]{64}/);
+      if (match) { clearTimeout(timer); resolveUrl(new URL(match[0])); }
+    });
+    // URLs and paths stay in process memory or the disposable private fixture directory.
+    child.stderr.on('data', chunk => {
+      errors += chunk;
+      if (errors.length > 65_536) { fail('Installed app exceeded diagnostic output limit.'); killTree(child, 'SIGKILL'); }
+    });
+    child.once('error', () => fail('Installed app could not start.'));
+    child.once('close', () => fail('Installed app stopped before becoming ready.'));
+  });
+  return { url, stderr: () => errors };
+};
+const waitUntil = async (check, description) => {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const result = await check();
+    if (result) return result;
+    await new Promise(resolveWait => setTimeout(resolveWait, 25));
+  }
+  throw new Error(description);
+};
+const verifyLiveSession = async url => {
+  const token = new URLSearchParams(url.hash.slice(1)).get('token');
+  assert.ok(token && /^[0-9a-f]{64}$/.test(token), 'Installed launcher must print a complete private session token.');
+  assert.equal((await fetch(new URL('/api/meta', url), { signal: AbortSignal.timeout(5_000) })).status, 401);
+  const response = await fetch(new URL('/api/meta', url), { headers: { 'X-Studio-Token': token }, signal: AbortSignal.timeout(5_000) });
+  assert.equal(response.status, 200, 'Installed launcher must remain usable with its printed authenticated URL.');
+  assert.equal((await response.json()).version, metadata.version);
 };
 const stopOnSignal = () => { killTree(app, 'SIGKILL'); };
 process.once('SIGINT', stopOnSignal); process.once('SIGTERM', stopOnSignal);
@@ -92,21 +133,50 @@ try {
   }
   passed('python-template-generation', 'The installed package generated the Python runtime, HTTP/MCP servers, session support, project metadata and build evidence; no Python interpreter is required for generation.');
 
-  app = spawn(join(prefix, 'bin', 'instrilo'), ['app', '--workspace', projects, '--port', '0'], { cwd: root, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const appUrl = await new Promise((resolveUrl, reject) => {
-    let captured = '';
-    const timer = setTimeout(() => reject(new Error('Installed app did not become ready within 15 seconds.')), 15_000);
-    app.stdout.on('data', chunk => {
-      captured += chunk;
-      const match = captured.match(/http:\/\/127\.0\.0\.1:\d+\/#token=[0-9a-f]{64}/);
-      if (match) { clearTimeout(timer); resolveUrl(new URL(match[0])); }
-      if (captured.length > 65_536) { clearTimeout(timer); reject(new Error('Installed app exceeded startup output limit.')); }
-    });
-    // Drain stderr without exposing private workspace/session details in logs.
-    app.stderr.resume();
-    app.once('error', () => { clearTimeout(timer); reject(new Error('Installed app could not start.')); });
-    app.once('close', () => { clearTimeout(timer); reject(new Error('Installed app stopped before becoming ready.')); });
-  });
+  const openerDirectory = join(root, 'opener-fixtures');
+  await mkdir(openerDirectory);
+  const openerFixture = String.raw`#!/usr/bin/env node
+import { appendFile } from 'node:fs/promises';
+const record = process.env.INSTRILO_RELEASE_OPENER_RECORD;
+const urlText = process.argv.find(value => /^http:\/\/127\.0\.0\.1:/.test(value));
+const append = async value => appendFile(record, JSON.stringify(value) + '\n');
+await append({ invoked: true });
+try {
+  const url = new URL(urlText);
+  const token = new URLSearchParams(url.hash.slice(1)).get('token');
+  const page = await fetch(url, { signal: AbortSignal.timeout(3000) });
+  const unauthenticated = await fetch(new URL('/api/meta', url), { signal: AbortSignal.timeout(3000) });
+  const authenticated = await fetch(new URL('/api/meta', url), { headers: { 'X-Studio-Token': token ?? '' }, signal: AbortSignal.timeout(3000) });
+  const info = await authenticated.json();
+  await append({ complete: true, url: urlText, html: page.status, unauthenticated: unauthenticated.status, authenticated: authenticated.status, version: info.version });
+  process.exitCode = process.env.INSTRILO_RELEASE_OPENER_FAIL === '1' ? 17 : 0;
+} catch {
+  await append({ complete: true, failed: true });
+  process.exitCode = 19;
+}
+`;
+  for (const executable of ['open', 'xdg-open', 'wslview', 'explorer.exe']) {
+    const path = join(openerDirectory, executable);
+    await writeFile(path, openerFixture);
+    await chmod(path, 0o755);
+  }
+  const openerEnv = record => ({ ...env, PATH: `${openerDirectory}:${env.PATH || ''}`, INSTRILO_RELEASE_OPENER_RECORD: record });
+  const openerRecords = async record => {
+    if (!await exists(record)) return [];
+    const text = await readFile(record, 'utf8');
+    return text.split('\n').slice(0, -1).filter(Boolean).map(line => JSON.parse(line));
+  };
+  const verifyOpening = async (record, url) => {
+    const entry = await waitUntil(async () => (await openerRecords(record)).find(item => item.complete), 'Installed launcher did not finish its isolated browser-open attempt.');
+    assert.equal(entry.failed, undefined, 'The local server must already be reachable when the platform opener is invoked.');
+    assert.ok(entry.url === url.href, 'The platform opener must receive exactly the printed authenticated URL.');
+    assert.equal(entry.html, 200);
+    assert.equal(entry.unauthenticated, 401);
+    assert.equal(entry.authenticated, 200);
+    assert.equal(entry.version, metadata.version);
+  };
+  const manualRecord = join(root, 'manual-app-opener.jsonl');
+  const { url: appUrl } = await startInstalledApp(join(prefix, 'bin', 'instrilo'), ['app', '--workspace', projects, '--port', '0'], openerEnv(manualRecord));
   const request = path => fetch(new URL(path, appUrl), { signal: AbortSignal.timeout(10_000) });
   const html = await request('/');
   assert.equal(html.status, 200); assert.match(await html.text(), /<title>Instrilo<\/title>/);
@@ -122,8 +192,42 @@ try {
   assert.equal(authenticated.status, 200); assert.equal((await authenticated.json()).version, metadata.version);
   const listed = await fetch(new URL('/api/projects', appUrl), { headers: { 'X-Studio-Token': token }, signal: AbortSignal.timeout(10_000) });
   assert.equal(listed.status, 200); assert.equal((await listed.json()).length, 2);
+  await new Promise(resolveObservation => setTimeout(resolveObservation, 300));
+  assert.equal(await exists(manualRecord), false, 'The legacy app command must remain manual unless --open is requested.');
   await stopApp();
   passed('installed-browser-app', 'Local branded HTML, all JavaScript/CSS/icon assets, rejected unauthenticated API access, authenticated version metadata and both generated projects were verified.');
+
+  for (const [id, arguments_, description] of [
+    ['installed-web-auto-open', ['web', '--workspace', projects], 'The installed web command selects an available port and invokes the platform opener only after its authenticated server is reachable.'],
+    ['installed-web-enable', ['web', 'enable', '--workspace', projects, '--port', '0'], 'The installed web enable form opens the same ready authenticated local app with explicit workspace and port options.'],
+    ['installed-app-open-opt-in', ['app', '--workspace', projects, '--port', '0', '--open'], 'The legacy app command supports explicit browser opening while its ordinary startup remains manual.'],
+  ]) {
+    const record = join(root, `${id}.jsonl`);
+    const { url } = await startInstalledApp(join(prefix, 'bin', 'instrilo'), arguments_, openerEnv(record));
+    await verifyOpening(record, url);
+    await verifyLiveSession(url);
+    await stopApp();
+    passed(id, description);
+  }
+
+  for (const variant of [[], ['enable']]) {
+    const noOpenRecord = join(root, `web-${variant.length ? 'enable-' : ''}no-open.jsonl`);
+    const { url: noOpenUrl } = await startInstalledApp(join(prefix, 'bin', 'instrilo'), ['web', ...variant, '--workspace', projects, '--port', '0', '--no-open'], openerEnv(noOpenRecord));
+    await verifyLiveSession(noOpenUrl);
+    // Keep the server alive long enough to observe an incorrectly scheduled detached opener.
+    await new Promise(resolveObservation => setTimeout(resolveObservation, 300));
+    assert.equal(await exists(noOpenRecord), false, '--no-open must never invoke the platform opener.');
+    await stopApp();
+  }
+  passed('installed-web-no-open', 'Both installed web and web enable forms honor --no-open, print usable authenticated URLs and never invoke the browser opener.');
+
+  const failingRecord = join(root, 'web-failed-opener.jsonl');
+  const failedOpen = await startInstalledApp(join(prefix, 'bin', 'instrilo'), ['web', '--workspace', projects, '--port', '0'], { ...openerEnv(failingRecord), INSTRILO_RELEASE_OPENER_FAIL: '1' });
+  await verifyOpening(failingRecord, failedOpen.url);
+  await waitUntil(() => failedOpen.stderr().length > 0, 'A failed browser opener must produce a manual-opening diagnostic.');
+  await verifyLiveSession(failedOpen.url);
+  await stopApp();
+  passed('installed-web-opener-fallback', 'A failed isolated platform opener produces a diagnostic while the printed authenticated URL and local app remain usable; no real browser is launched.');
 
   const consumer = join(root, 'local-consumer');
   await mkdir(consumer);

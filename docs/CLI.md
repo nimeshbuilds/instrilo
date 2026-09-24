@@ -2,9 +2,9 @@
 
 Generated from the CLI itself. Regenerate with `npm run docs:cli` after changing commands or manual topics.
 
-Install the built app and CLI from the [GitHub release](https://github.com/nimeshbuilds/instrilo/releases) using the [installation guide](INSTALLATION.md). Source contributors can use `npm ci && npm run build && npm link`; without linking, replace `instrilo` with `npm run cli --` in the examples. `PROJECT`, `RUN_ID`, `HASH`, and uppercase example values are placeholders.
+Install the built app and CLI from the [GitHub release](https://github.com/nimeshbuilds/instrilo/releases) using the [installation guide](INSTALLATION.md). Run `instrilo web enable` to open the local app. Or build from source with `npm ci --ignore-scripts` and `npm run build`, then run `node dist/cli.js web enable`; replace `instrilo` with `node dist/cli.js` in the examples from that repository root. `npm link` is optional. `PROJECT`, `RUN_ID`, `HASH`, and uppercase example values are placeholders.
 
-This reference contains 140 command entries (including groups and the root) and 27 offline manual topics.
+This reference contains 142 command entries (including groups and the root) and 28 offline manual topics.
 
 ```sh
 instrilo help --all
@@ -39,7 +39,9 @@ instrilo help --json
 | `instrilo doctor` | Check configuration, environment references and installed CLI binaries without model calls. |
 | `instrilo providers` | List supported connection capabilities and restrictions. |
 | `instrilo deploy` | Show generated delivery instructions; --execute runs the target script you configured. |
-| `instrilo app` | Open the local web application backed by the same core as the CLI. |
+| `instrilo web` | Start the local web app and open your browser. Keep this terminal open; Ctrl-C stops it. |
+| `instrilo web enable` | Start and open the web app for this terminal session; equivalent to instrilo web. |
+| `instrilo app` | Start the local web app with legacy workspace/port defaults; add --open to open your browser. |
 | `instrilo projects` | Discover project workspaces and inspect their source/configuration. |
 | `instrilo projects list` | List projects in a workspace with language, framework, target and modification time. |
 | `instrilo projects show` | Show project configuration, inspected guidance and dataset summary. |
@@ -249,6 +251,7 @@ Use in directly in zsh; in Bash/POSIX sh use command in because in is a
 reserved word. For example: command in help --all.
 
 Start here:
+  instrilo web enable                  Open the local app in your browser
   instrilo explain quickstart
   instrilo help --all                   Every command, argument and option
   instrilo help --json                  Machine-readable command reference
@@ -278,11 +281,13 @@ Available offline: `instrilo explain quickstart`.
 ```text
 Prerequisites: Node.js >=22 and npm on macOS, Linux or WSL. For Python use
 Python 3.11–3.13 plus uv. Native Windows cancellation/install need further work.
-From the source checkout: npm ci --ignore-scripts && npm run build && npm link
-npm link installs instrilo plus the in and nb-agent aliases. Repeat it after
-updating an existing installation to add the new alias. In zsh: in --help.
-In Bash/POSIX sh: command in --help (in is a reserved word).
-Without npm link, replace instrilo with npm run cli -- in every example.
+Install the built CLI and app from a GitHub release using the installation guide:
+  https://github.com/nimeshbuilds/instrilo/blob/main/docs/INSTALLATION.md
+If instrilo --version works, you can run this demo immediately; no clone is needed.
+Or build from source: npm ci --ignore-scripts, then npm run build. From that
+repository root, replace instrilo with node dist/cli.js in the commands below.
+Optional npm link adds instrilo plus the in and nb-agent aliases to PATH.
+In zsh: in --help. In Bash/POSIX sh: command in --help (in is a reserved word).
 
   instrilo init support-agent --directory .studio/projects --language typescript
   instrilo guidance create .studio/projects/support-agent/guidance
@@ -293,7 +298,7 @@ Without npm link, replace instrilo with npm run cli -- in every example.
   instrilo eval .studio/projects/support-agent --split development
   instrilo projects show .studio/projects/support-agent
   instrilo export .studio/projects/support-agent --output support-agent.zip
-  instrilo app --workspace .studio/projects
+  instrilo web enable --workspace .studio/projects
 
 The guidance interview asks ten product questions. For unattended use:
   instrilo guidance answers-template > answers.json
@@ -309,6 +314,47 @@ paid model request is made until you configure a live connection.
 Python: set NB_AGENT_PYTHON=/absolute/path/to/python3 if interpreter selection is
 ambiguous. The generated project's .venv takes precedence. Use a separate venv
 for every generated project.
+```
+
+### Open and control the local web app
+
+Available offline: `instrilo explain web`.
+
+```text
+  instrilo web enable
+  instrilo web
+  instrilo web enable --workspace ./my-projects --port 4317
+  instrilo web enable --no-open
+  instrilo help web enable
+
+web enable starts the local app and opens its authenticated session in your default
+browser. web is a shorter equivalent. Both choose an available port and use
+~/Instrilo/projects by default, so projects have the same home from any directory.
+--workspace chooses another project folder; --port selects a fixed port (0 means
+an available one). Keep the terminal running. Ctrl+C stops the app and preserves
+projects. Run the same command again to reopen that workspace.
+
+The app listens only on 127.0.0.1. Keep the session URL private; it contains a fresh
+access token for this run. This is a foreground local app, not a background service
+or a public website. It does not change operating-system startup settings.
+
+On SSH, WSL, or a machine without a browser, use --no-open and open the printed
+URL in a browser that can reach that machine's loopback address. A browser-launch
+failure leaves the server running and prints a fallback URL. An occupied fixed
+port fails; remove --port or use --port 0 to let the app choose an available one.
+
+For source builds, run node dist/cli.js web enable after npm ci --ignore-scripts
+and npm run build. No global link is required. With a linked/release install,
+command in web enable works in Bash and zsh; in web enable also works in zsh.
+
+The earlier app command remains available with its existing workspace and port
+defaults. It prints a URL without opening a browser; add --open to open it:
+  instrilo app --workspace ./my-projects --port 0 --open
+
+No model account is needed to open the app. Create a project and import guidance,
+then configure model connections when ready. Opening the app does not sign into
+providers or install agent dependencies. Read explain subscriptions and quickstart
+for those next steps.
 ```
 
 ### Agents, graphs, harnesses and evidence
@@ -1519,9 +1565,58 @@ instrilo deploy PROJECT --execute
 
 Guide: `instrilo explain deployment`.
 
+### instrilo web
+
+Start the local web app and open your browser. Keep this terminal open; Ctrl-C stops it.
+
+```text
+instrilo web
+```
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--workspace <directory>` | no | ~/Instrilo/projects | directory containing your projects |
+| `--port <number>` | no | 0 | local HTTP port; 0 chooses an available port |
+| `--open` | no | true | open the authenticated app URL in your default browser |
+| `--no-open` | no | — | print the authenticated URL without opening a browser |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo web
+instrilo web --no-open
+```
+
+Guide: `instrilo explain web`.
+
+### instrilo web enable
+
+Start and open the web app for this terminal session; equivalent to instrilo web.
+
+```text
+instrilo web enable
+```
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--workspace <directory>` | no | ~/Instrilo/projects | directory containing your projects |
+| `--port <number>` | no | 0 | local HTTP port; 0 chooses an available port |
+| `--open` | no | true | open the authenticated app URL in your default browser |
+| `--no-open` | no | — | print the authenticated URL without opening a browser |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo web enable
+instrilo web enable --workspace ./my-projects --port 4317
+instrilo web enable --no-open
+```
+
+Guide: `instrilo explain web`.
+
 ### instrilo app
 
-Open the local web application backed by the same core as the CLI.
+Start the local web app with legacy workspace/port defaults; add --open to open your browser.
 
 ```text
 instrilo app
@@ -1529,16 +1624,19 @@ instrilo app
 
 | Option | Required | Default | Description |
 | --- | --- | --- | --- |
-| `--workspace <directory>` | no | .studio/projects | project workspace |
-| `--port <number>` | no | 4317 | local HTTP port |
+| `--workspace <directory>` | no | .studio/projects | directory containing your projects |
+| `--port <number>` | no | 4317 | local HTTP port; 0 chooses an available port |
+| `--open` | no | false | open the authenticated app URL in your default browser |
+| `--no-open` | no | — | print the authenticated URL without opening a browser |
 
 Every command also accepts `-h, --help`.
 
 ```sh
 instrilo app --workspace .studio/projects --port 4317
+instrilo app --workspace ./my-projects --port 0 --open
 ```
 
-Guide: `instrilo explain overview`.
+Guide: `instrilo explain web`.
 
 ### instrilo projects
 

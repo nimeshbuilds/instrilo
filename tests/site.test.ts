@@ -34,11 +34,17 @@ test('site publishes ten static walkthroughs with source-exact commands, expecte
   assert.equal((index.match(/data-scenario data-category=/g) ?? []).length, 10);
   assert.equal((await htmlFiles(directory)).length, 12);
   assert.match(index, /First guide: no model account needed/);
-  assert.match(index, /instrilo app --workspace &quot;\$HOME\/Instrilo\/projects&quot; --port 0/);
+  assert.match(index, /instrilo web enable/);
+  assert.match(index, /node dist\/cli\.js web enable/);
   const { version } = JSON.parse(await readFile(join(repository, 'package.json'), 'utf8'));
   assert.ok(index.includes(`npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v${version}/nimeshbuilds-instrilo-${version}.tgz`));
   assert.ok(index.includes(`https://github.com/nimeshbuilds/instrilo/releases/tag/v${version}`));
-  assert.ok(index.indexOf('Install the release') < index.indexOf('Prepare the walkthroughs'), 'Built release precedes source-only walkthrough setup');
+  assert.equal((index.match(/class="installation-card"/g) ?? []).length, 2, 'Two clear installation paths');
+  assert.match(index, /<h3>Download the release<\/h3>/);
+  assert.match(index, /<h3>Build from source<\/h3>/);
+  assert.match(index, /--no-open/);
+  assert.match(index, /Keep the terminal running and stop with Ctrl\+C/);
+  assert.match(index, /These exact guides use the source checkout and bundled fixtures/);
   assert.match(index, /id="source-setup"/);
   for (const scenario of scenarios) {
     const html = await readFile(join(directory, 'quickstarts', scenario.id, 'index.html'), 'utf8');

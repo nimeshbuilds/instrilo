@@ -9,7 +9,7 @@
 
 A local CLI and web app for turning product guidance into an owned agent project. Choose Python or TypeScript, a framework, independent builder/runtime/judge connections, evaluation cases, and delivery artifacts.
 
-Instrilo 0.2.1 includes a ready-built app and CLI package for Node.js. It provides exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
+Instrilo 0.2.2 includes a ready-built app and CLI package for Node.js. It provides exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
 
 [Install the release](docs/INSTALLATION.md) · [Website & ten practical quickstarts](https://nimeshbuilds.github.io/instrilo/) · [CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
 
@@ -21,19 +21,49 @@ Start from your product's guidance, keep the code you generate, and choose the m
 
 Link reviewed requirements to exact evaluation cases, preserve custom code during regeneration, review outputs without seeing the judge's verdict, and apply a release policy. Record supported runs, approve exact tool calls, replay frozen responses, and inspect the observed execution graph. The [roadmap](docs/ROADMAP.md) distinguishes implemented local workflows from future hosted and framework expansion. The [competitive comparison](docs/COMPETITORS.md) explains the existing alternatives and the differentiation we still need to validate.
 
-## Install the app and CLI
+## Get the app and CLI
 
-Requires [Node.js 22 or newer](https://nodejs.org/en/download) and npm on macOS, Linux, or WSL. Native Windows support is not yet verified. Install the built [v0.2.1 release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.1):
+Choose the **built release** or **build from source**. Both include the same CLI and local browser app. Requires [Node.js 22 or newer](https://nodejs.org/en/download) and npm on macOS, Linux, or WSL. Native Windows support is not yet verified.
+
+### Download and install the release
+
+Install the ready-built [v0.2.2 release](https://github.com/nimeshbuilds/instrilo/releases/tag/v0.2.2) without cloning or compiling:
 
 ```sh
-npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.1/nimeshbuilds-instrilo-0.2.1.tgz
-instrilo --version
-instrilo app --workspace "$HOME/Instrilo/projects" --port 0
+npm install --global https://github.com/nimeshbuilds/instrilo/releases/download/v0.2.2/nimeshbuilds-instrilo-0.2.2.tgz
+instrilo web enable
 ```
 
-This installs the compiled CLI and local browser app together; no clone or source build is needed. npm downloads the package's runtime dependencies. Open the authenticated local URL printed in the terminal and keep that terminal running. The app listens on `127.0.0.1`; keep its session URL private. Stop it with Ctrl+C.
+You can also [download the package and verify its checksum](docs/INSTALLATION.md#download-and-verify-before-installation) before installing it. npm fetches runtime dependencies. If the global installation directory is not writable, use the [user-owned prefix](docs/INSTALLATION.md#install-without-administrator-access).
 
-If your npm global directory is not writable, use the [installation guide's user-owned prefix](docs/INSTALLATION.md#install-without-administrator-access); do not add `sudo`. The guide also covers checksums, upgrades, uninstalling, PATH issues, and installation from source. This is a GitHub release package, not an npm registry publication or a native desktop executable.
+### Build from source
+
+With [Git](https://git-scm.com/downloads) installed:
+
+```sh
+git clone https://github.com/nimeshbuilds/instrilo.git
+cd instrilo
+npm ci --ignore-scripts
+npm run build
+node dist/cli.js web enable
+```
+
+No global installation is required. From that repository root, replace `instrilo` with `node dist/cli.js` in the examples below. Optionally run `npm link` to make `instrilo` available from other folders.
+
+### Open the web app
+
+`instrilo web enable` (or simply `instrilo web`) starts the app, chooses an available port, and opens your browser. Projects live in `~/Instrilo/projects` by default. Keep the terminal running; stop the app with Ctrl+C. Run the command again to reopen your projects.
+
+```sh
+instrilo web enable --workspace ./my-projects
+instrilo web enable --port 4317
+instrilo web enable --no-open
+instrilo explain web
+```
+
+Use `--no-open` on a server or when you prefer to open the printed URL yourself. The app listens on `127.0.0.1`; keep its session URL private. If automatic opening is unavailable, the app keeps running and prints a fallback URL. The existing `instrilo app` command still starts the server without opening a browser; add `--open` if desired.
+
+The [installation guide](docs/INSTALLATION.md) covers checksums, PATH, upgrades, uninstalling, and troubleshooting. GitHub Pages hosts the documentation; the workbench runs on your computer.
 
 Create a project, import guidance or complete the interview, then use **Configuration** to select connections and framework. **Build project** previews file changes; **Apply reviewed build** applies that exact plan. **Install dependencies** prepares its runtime. The **Playground**, **Evaluations**, and **Code & delivery** tabs run, inspect, and export the result. **Evidence & review** links requirements and reviews reports; **Runs & approvals** records, approves, resumes, and replays supported runs.
 
@@ -229,19 +259,11 @@ Without `--execute`, this displays the selected target and output directory. Aft
 
 The app itself is a local workbench. It does not supply a hosted identity provider, tenant administration, durable approval inbox, persistent workflow checkpointing, or a managed deployment control plane. See [delivery requirements](docs/DEPLOYMENT.md), the [full product specification](docs/PRODUCT-SPEC.md), and the [prioritized roadmap](docs/ROADMAP.md).
 
-## Follow the ten walkthroughs or develop from source
+## Follow the ten walkthroughs
 
-The [ten tested quickstarts](https://nimeshbuilds.github.io/instrilo/#quickstarts) use repository fixtures and source-relative commands. For those exact guides, keep a source checkout separate from your global release installation:
+The [ten tested quickstarts](https://nimeshbuilds.github.io/instrilo/#quickstarts) use repository fixtures and source-relative commands. Use the **Build from source** steps above, then follow a guide from that repository root. Keep this checkout separate from a global release installation. Normal app and CLI use does not require these fixtures; the CLI example above works with either installation path.
 
-```sh
-git clone https://github.com/nimeshbuilds/instrilo.git
-cd instrilo
-npm ci --ignore-scripts
-npm run build
-node dist/cli.js help --all
-```
-
-Follow the guides from this repository root using their `node dist/cli.js` commands. The global release is sufficient for normal app and CLI use. Source contributors can run `npm run dev -- --workspace .studio/projects --port 0` to start the app directly from TypeScript.
+Source contributors can run `npm run cli -- web enable` directly from TypeScript after installing dependencies. The existing `npm run dev -- --workspace .studio/projects --port 0` server entry point is also available.
 
 ## Architecture and tests
 

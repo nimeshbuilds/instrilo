@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-09-24
+
+- `instrilo web enable` starts the local browser app and opens it automatically; `instrilo web` is a shorthand. A stable home workspace and automatic free port make repeated startup straightforward. Use `--workspace`, `--port`, or `--no-open` when needed.
+- Preserve the existing server-only `app` command and add its optional `--open` flag. Browser-launch failures retain the running app and provide the local URL for manual opening.
+- Two clear installation paths in the README, installation guide, and branded website: download the built release or build from source. The offline manual covers app startup, terminal lifetime, browser fallback, and both installation paths.
+
 ## 0.2.1 — 2026-09-24
 
 - Ready-built GitHub release package containing both the CLI and local browser app; install with npm without cloning or compiling Instrilo. The package includes the `instrilo`, `in`, and `nb-agent` commands.

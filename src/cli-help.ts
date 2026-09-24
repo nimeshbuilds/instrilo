@@ -77,6 +77,7 @@ Use in directly in zsh; in Bash/POSIX sh use command in because in is a
 reserved word. For example: command in help --all.
 
 Start here:
+  instrilo web enable                  Open the local app in your browser
   instrilo explain quickstart
   instrilo help --all                   Every command, argument and option
   instrilo help --json                  Machine-readable command reference
@@ -99,11 +100,13 @@ text/code/manual/graph commands print their documented format. Secrets stay in
 environment variables. No hosted account is required for the core workbench.`},
  quickstart:{title:'An executable offline quickstart',body:`Prerequisites: Node.js >=22 and npm on macOS, Linux or WSL. For Python use
 Python 3.11–3.13 plus uv. Native Windows cancellation/install need further work.
-From the source checkout: npm ci --ignore-scripts && npm run build && npm link
-npm link installs instrilo plus the in and nb-agent aliases. Repeat it after
-updating an existing installation to add the new alias. In zsh: in --help.
-In Bash/POSIX sh: command in --help (in is a reserved word).
-Without npm link, replace instrilo with npm run cli -- in every example.
+Install the built CLI and app from a GitHub release using the installation guide:
+  https://github.com/nimeshbuilds/instrilo/blob/main/docs/INSTALLATION.md
+If instrilo --version works, you can run this demo immediately; no clone is needed.
+Or build from source: npm ci --ignore-scripts, then npm run build. From that
+repository root, replace instrilo with node dist/cli.js in the commands below.
+Optional npm link adds instrilo plus the in and nb-agent aliases to PATH.
+In zsh: in --help. In Bash/POSIX sh: command in --help (in is a reserved word).
 
   instrilo init support-agent --directory .studio/projects --language typescript
   instrilo guidance create .studio/projects/support-agent/guidance
@@ -114,7 +117,7 @@ Without npm link, replace instrilo with npm run cli -- in every example.
   instrilo eval .studio/projects/support-agent --split development
   instrilo projects show .studio/projects/support-agent
   instrilo export .studio/projects/support-agent --output support-agent.zip
-  instrilo app --workspace .studio/projects
+  instrilo web enable --workspace .studio/projects
 
 The guidance interview asks ten product questions. For unattended use:
   instrilo guidance answers-template > answers.json
@@ -130,6 +133,40 @@ paid model request is made until you configure a live connection.
 Python: set NB_AGENT_PYTHON=/absolute/path/to/python3 if interpreter selection is
 ambiguous. The generated project's .venv takes precedence. Use a separate venv
 for every generated project.`},
+ web:{title:'Open and control the local web app',body:`  instrilo web enable
+  instrilo web
+  instrilo web enable --workspace ./my-projects --port 4317
+  instrilo web enable --no-open
+  instrilo help web enable
+
+web enable starts the local app and opens its authenticated session in your default
+browser. web is a shorter equivalent. Both choose an available port and use
+~/Instrilo/projects by default, so projects have the same home from any directory.
+--workspace chooses another project folder; --port selects a fixed port (0 means
+an available one). Keep the terminal running. Ctrl+C stops the app and preserves
+projects. Run the same command again to reopen that workspace.
+
+The app listens only on 127.0.0.1. Keep the session URL private; it contains a fresh
+access token for this run. This is a foreground local app, not a background service
+or a public website. It does not change operating-system startup settings.
+
+On SSH, WSL, or a machine without a browser, use --no-open and open the printed
+URL in a browser that can reach that machine's loopback address. A browser-launch
+failure leaves the server running and prints a fallback URL. An occupied fixed
+port fails; remove --port or use --port 0 to let the app choose an available one.
+
+For source builds, run node dist/cli.js web enable after npm ci --ignore-scripts
+and npm run build. No global link is required. With a linked/release install,
+command in web enable works in Bash and zsh; in web enable also works in zsh.
+
+The earlier app command remains available with its existing workspace and port
+defaults. It prints a URL without opening a browser; add --open to open it:
+  instrilo app --workspace ./my-projects --port 0 --open
+
+No model account is needed to open the app. Create a project and import guidance,
+then configure model connections when ready. Opening the app does not sign into
+providers or install agent dependencies. Read explain subscriptions and quickstart
+for those next steps.`},
  concepts:{title:'Agents, graphs, harnesses and evidence',body:`An agent combines instructions, model decisions, tools and bounded control flow.
 A framework implements that flow (native, LangGraph, OpenAI Agents or CrewAI).
 A harness supplies the environment: tool invocation, state, limits and feedback.
@@ -741,7 +778,9 @@ const examples:Record<string,string[]>={
  eval:['instrilo eval PROJECT --split holdout --output PROJECT/reports/holdout.json'],
  plan:['instrilo plan PROJECT --interview --apply'],
  deploy:['instrilo deploy PROJECT','instrilo deploy PROJECT --execute'],
- app:['instrilo app --workspace .studio/projects --port 4317'],
+ web:['instrilo web','instrilo web --no-open'],
+ 'web enable':['instrilo web enable','instrilo web enable --workspace ./my-projects --port 4317','instrilo web enable --no-open'],
+ app:['instrilo app --workspace .studio/projects --port 4317','instrilo app --workspace ./my-projects --port 0 --open'],
  'config set':['instrilo config set agent.limits.maxSteps 12 PROJECT --json'],
  'config apply':['instrilo config apply PROJECT --file complete-config.yaml'],
  'connections add':['instrilo connections add gateway PROJECT --data \'{"kind":"gateway","model":"MODEL_ID","baseUrl":"https://gateway.example/v1","auth":{"type":"bearer-env","env":"GATEWAY_TOKEN"}}\''],
@@ -793,7 +832,7 @@ const leafDescriptions:Record<string,string> = {
 const argumentDescriptions:Record<string,string>={project:'project directory or manifest; defaults to the current directory',engine:'docker or podman',name:'project slug, or existing tool name for tools remove',directory:'source or destination directory; see command description',path:'relative file path within the selected project',previous:'previous evaluation report JSON file',current:'current evaluation report JSON file',field:'dotted manifest field such as agent.limits.maxSteps',value:'literal string, or JSON when --json is passed',id:'existing identifier for this command group; inspect its list/show command',role:'builder, runtime, or judge',provider:'provider kind from instrilo providers','run-id':'recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup',file:'bounded local input file',topic:'manual topic from instrilo explain --list'};
 function commandPath(cmd:Command){const names:string[]=[];let cursor:Command|null=cmd;while(cursor.parent){names.unshift(cursor.name());cursor=cursor.parent;}return names.join(' ');}
 function allCommands(root:Command):Command[]{return [root,...root.commands.flatMap(allCommands)];}
-function topicFor(cmd:Command){const root=commandPath(cmd).split(' ')[0]||'overview';return ({auth:'subscriptions',setup:'subscriptions',connect:'subscriptions',config:'configuration',cases:'evaluations',reports:'evaluations',eval:'evaluations',compare:'evaluations',policy:'release',evidence:'requirements',generation:'regeneration',build:'regeneration',deps:'dependencies',prepare:'dependencies',run:'runs',deploy:'deployment',artifacts:'files',export:'files',projects:'files',doctor:'troubleshooting',providers:'connections',init:'quickstart',create:'quickstart',plan:'guidance',app:'overview'}as Record<string,string>)[root]||root;}
+function topicFor(cmd:Command){const root=commandPath(cmd).split(' ')[0]||'overview';return ({auth:'subscriptions',setup:'subscriptions',connect:'subscriptions',config:'configuration',cases:'evaluations',reports:'evaluations',eval:'evaluations',compare:'evaluations',policy:'release',evidence:'requirements',generation:'regeneration',build:'regeneration',deps:'dependencies',prepare:'dependencies',run:'runs',deploy:'deployment',artifacts:'files',export:'files',projects:'files',doctor:'troubleshooting',providers:'connections',init:'quickstart',create:'quickstart',plan:'guidance',app:'web',web:'web'}as Record<string,string>)[root]||root;}
 export function commandReference(program:Command){return allCommands(program).map(cmd=>({command:'instrilo'+(commandPath(cmd)?' '+commandPath(cmd):''),description:cmd.description(),arguments:cmd.registeredArguments.map(a=>({name:a.name(),description:a.description,required:a.required,variadic:a.variadic,default:a.defaultValue})),options:cmd.options.map(o=>({flags:o.flags,description:o.description,required:o.mandatory,default:o.defaultValue})),examples:examples[commandPath(cmd)]||[],topic:topicFor(cmd)}));}
 export function installCliHelp(program:Command){
  program.addHelpCommand(false).showHelpAfterError('Run instrilo help --all or instrilo explain troubleshooting.').showSuggestionAfterError(true);
@@ -805,7 +844,7 @@ export function installCliHelp(program:Command){
   if(o.all){console.log(o.json?JSON.stringify(manuals,null,2):entries.map(([id,m])=>`INSTRILO / ${id}\n${m.title}\n\n${m.body}`).join('\n\n'+'='.repeat(72)+'\n\n'));return;}
   const id=topic||'overview',manual=manuals[id];if(!manual)throw new Error('Unknown topic '+id+'. Run instrilo explain --list.');console.log(o.json?JSON.stringify({topic:id,...manual},null,2):manual.title+'\n\n'+manual.body);
  });
- for(const cmd of allCommands(program)){const path=commandPath(cmd);if(!cmd.description()&&leafDescriptions[path])cmd.description(leafDescriptions[path]);for(const arg of cmd.registeredArguments)if(!arg.description)arg.description=path==='help'?'nested command names, e.g. config set':argumentDescriptions[arg.name()]||'command argument';if(!examples[path]&&!cmd.commands.length){const args=cmd.registeredArguments.filter(a=>a.required).map(a=>a.name()==='field'?'agent.limits':a.name()==='value'?"'{\"maxSteps\":8,\"timeoutMs\":60000,\"maxOutputTokens\":2048}'":a.name()==='directory'?'./DIRECTORY':a.name()==='file'?'./INPUT.json':a.name()==='name'?'my-agent':a.name()==='path'?(path.startsWith('guidance')?'purpose.md':path.startsWith('artifacts')?'README.md':'reports/REPORT.json'):a.name().toUpperCase().replaceAll('-','_'));const flags=cmd.options.filter(o=>o.mandatory).map(o=>o.long+(o.required?' '+(o.long?.slice(2).toUpperCase().replaceAll('-','_')||'VALUE'):''));if(cmd.options.some(o=>o.long==='--file')&&cmd.options.some(o=>o.long==='--data'))flags.push('--file ./INPUT.json');if(path==='config set')flags.push('--json');if(path==='guidance write')flags.push('--text \"Your product guidance\"');if(path==='runs start')flags.push('--record-content');if(path==='adapters install')flags.push('--trust-code');examples[path]=['instrilo '+[path,...args,...flags].join(' ')];}cmd.configureHelp({sortSubcommands:true,sortOptions:true});cmd.addHelpText('after',()=>extraHelp(cmd));if(cmd.commands.length&&cmd!==program)cmd.action(()=>cmd.outputHelp());}
+ for(const cmd of allCommands(program)){const path=commandPath(cmd);if(!cmd.description()&&leafDescriptions[path])cmd.description(leafDescriptions[path]);for(const arg of cmd.registeredArguments)if(!arg.description)arg.description=path==='help'?'nested command names, e.g. config set':argumentDescriptions[arg.name()]||'command argument';if(!examples[path]&&!cmd.commands.length){const args=cmd.registeredArguments.filter(a=>a.required).map(a=>a.name()==='field'?'agent.limits':a.name()==='value'?"'{\"maxSteps\":8,\"timeoutMs\":60000,\"maxOutputTokens\":2048}'":a.name()==='directory'?'./DIRECTORY':a.name()==='file'?'./INPUT.json':a.name()==='name'?'my-agent':a.name()==='path'?(path.startsWith('guidance')?'purpose.md':path.startsWith('artifacts')?'README.md':'reports/REPORT.json'):a.name().toUpperCase().replaceAll('-','_'));const flags=cmd.options.filter(o=>o.mandatory).map(o=>o.long+(o.required?' '+(o.long?.slice(2).toUpperCase().replaceAll('-','_')||'VALUE'):''));if(cmd.options.some(o=>o.long==='--file')&&cmd.options.some(o=>o.long==='--data'))flags.push('--file ./INPUT.json');if(path==='config set')flags.push('--json');if(path==='guidance write')flags.push('--text \"Your product guidance\"');if(path==='runs start')flags.push('--record-content');if(path==='adapters install')flags.push('--trust-code');examples[path]=['instrilo '+[path,...args,...flags].join(' ')];}cmd.configureHelp({sortSubcommands:true,sortOptions:true});cmd.addHelpText('after',()=>extraHelp(cmd));if(cmd.commands.length&&cmd!==program&&path!=='web')cmd.action(()=>cmd.outputHelp());}
  program.action(()=>program.outputHelp());
 }
 function extraHelp(cmd:Command){const path=commandPath(cmd),topic=topicFor(cmd);const lines=examples[path]||[];const required=cmd.options.filter(o=>o.mandatory).map(o=>o.long);return '\n'+(required.length?'Required options: '+required.join(', ')+'\n\n':'')+(lines.length?'Examples:\n'+lines.map(l=>'  '+l).join('\n')+'\n\n':'')+(manuals[topic]?'Guide: instrilo explain '+topic+'\n':'')+'All capabilities: instrilo help --all | instrilo explain --list\n';}

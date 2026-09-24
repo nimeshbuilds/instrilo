@@ -1,6 +1,6 @@
 {
   "name": "@nimeshbuilds/instrilo",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "description": "Build with intent. Ship with evidence. Guidance-driven agent creation for Python and TypeScript.",
