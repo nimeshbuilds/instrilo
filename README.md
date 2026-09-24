@@ -9,15 +9,15 @@
 
 A local CLI and web app for turning product guidance into an owned agent project. Choose Python or TypeScript, a framework, independent builder/runtime/judge connections, evaluation cases, and delivery artifacts.
 
-Instrilo 0.1 is an early source release with exercised agent runtimes. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
+Instrilo 0.2 is a source release with exercised agent runtimes, safe regeneration, release evidence, human review, adapters, and durable local runs. Real provider access, model quality, cloud deployment, and installation into a user's desktop/chat account require their own verification. See [verification evidence and limits](docs/VERIFICATION.md).
 
-[Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
+[CLI manual](docs/CLI.md) · [Product specification](docs/PRODUCT-SPEC.md) · [Roadmap](docs/ROADMAP.md) · [Competitors](docs/COMPETITORS.md) · [Contributing](CONTRIBUTING.md) · [Brand kit](assets/brand/README.md)
 
 ## Why Instrilo
 
 Start from your product's guidance, keep the code you generate, and choose the model connections, framework, and deployment target independently. The CLI and local app share one project format, including Python and TypeScript support from this first release.
 
-The long-term focus is agent quality that can be inspected: link requirements to evaluations, preserve custom code during upgrades, replay failures, and verify adapters across frameworks. Those capabilities are prioritized in the [roadmap](docs/ROADMAP.md); they are not all implemented in 0.1. The [competitive comparison](docs/COMPETITORS.md) explains the existing alternatives and the differentiation we still need to validate.
+Link reviewed requirements to exact evaluation cases, preserve custom code during regeneration, review outputs without seeing the judge's verdict, and apply a release policy. Record supported runs, approve exact tool calls, replay frozen responses, and inspect the observed execution graph. The [roadmap](docs/ROADMAP.md) distinguishes implemented local workflows from future hosted and framework expansion. The [competitive comparison](docs/COMPETITORS.md) explains the existing alternatives and the differentiation we still need to validate.
 
 ## Start the app
 
@@ -37,7 +37,7 @@ Open the authenticated local URL printed in the terminal. The app listens on `12
 npm run dev -- --workspace .studio/projects --port 4317
 ```
 
-Create a project, import guidance or complete the interview, then use **Configuration** to select connections and framework. **Build project** generates code. **Install dependencies** prepares its runtime. The **Playground**, **Evaluations**, and **Code & delivery** tabs run, inspect, and export the result.
+Create a project, import guidance or complete the interview, then use **Configuration** to select connections and framework. **Build project** previews file changes; **Apply reviewed build** applies that exact plan. **Install dependencies** prepares its runtime. The **Playground**, **Evaluations**, and **Code & delivery** tabs run, inspect, and export the result. **Evidence & review** links requirements and reviews reports; **Runs & approvals** records, approves, resumes, and replays supported runs.
 
 New projects use an explicit offline demo. It returns labeled demonstration output, makes no model request, and never produces an LLM judge score. Dependency installation can still download packages.
 
@@ -83,7 +83,53 @@ After changing configuration or guidance, rebuild before running or evaluating:
 npm run cli -- build .studio/projects/support-agent --overwrite
 ```
 
-Rebuilding replaces generated files. Keep custom application changes in version control before using `--overwrite`.
+Rebuilding compares the new output, retained baseline, and current files. Unowned files and unchanged-generator customizations survive; conflicting edits stop the transaction. Preview with `generation plan PROJECT`; use `--merge` for conservative non-overlapping text merges and `--expected-plan HASH` to apply only the reviewed plan. Keep version control as an independent backup. Legacy builds have no trustworthy baseline for existing edits; see [regeneration and migration](docs/REGENERATION.md).
+
+## Everything from the terminal
+
+The CLI includes an offline operational manual and a complete command reference. Each command explains its arguments, options, examples, and related guide. No app or hosted account is required for the CLI workflows.
+
+```sh
+instrilo help --all
+instrilo help connections add
+instrilo explain --list
+instrilo explain quickstart
+instrilo explain --search JWT
+instrilo explain approvals
+instrilo help --json
+```
+
+Use `config`, `connections`, `tools`, `guidance`, and `cases` to create and edit project inputs. Use `requirements`, `evidence`, `policy`, `review`, and `release` for quality decisions. Use `generation`, `deps`, `runs`, `approvals`, `adapters`, `artifacts`, `reports`, and `export` for maintenance and delivery. `explain --all` prints the full manual; `--json` supports tooling. See the [complete CLI reference](docs/CLI.md).
+
+## Engineering workflows in 0.2
+
+| Workflow | What it does | Boundary |
+| --- | --- | --- |
+| [Requirements and release evidence](docs/EVIDENCE.md) | Versioned requirements, reviewed case links, stale-source detection, holdout policies and release decisions | Default policy rejects demo/synthetic evidence; local records are not independent attestations. |
+| [Safe regeneration](docs/REGENERATION.md) | Read-only plans, retained baselines, preserved edits, optional text merge, transaction recovery, legacy migration | Conflicts require a reviewed resolution; dependency locks must be resolved explicitly. |
+| [Human review](docs/EVIDENCE.md) | Blind review queues, immutable labels/corrections, disagreements and judge-human agreement | Descriptive calibration, not a statistical reliability guarantee or hosted reviewer identity. |
+| [Durable runs and replay](docs/RUNS.md) | Pause/review/resume, expiry and single-use claims, uncertain-write reconciliation, graphs and portable frozen replay | Native and LangGraph in both languages; API transports, macOS/Linux/WSL. Local operator trust. |
+| [Adapter conformance](docs/ADAPTERS.md) | Trusted pinned extensions, capability inspection, bounded invocation, conformance checks and authenticated provider bridge | Generator extensions add artifacts to built-in runtimes; they do not register a new primary framework. |
+
+Start by reading the relevant `explain` topic. For example:
+
+```sh
+instrilo requirements example
+instrilo cases example
+instrilo explain release
+instrilo generation plan PROJECT
+instrilo deps lock PROJECT
+instrilo deps install PROJECT
+instrilo runs start PROJECT --input "Draft a response" --record-content
+instrilo runs list PROJECT
+instrilo runs graph RUN_ID PROJECT --format mermaid
+instrilo runs replay RUN_ID PROJECT
+instrilo runs export RUN_ID PROJECT --output issue-bundle.json
+instrilo adapters catalog
+instrilo export PROJECT --output project.zip
+```
+
+`PROJECT`, `RUN_ID`, and `HASH` are placeholders. Recording explicitly persists model/tool content on your machine. Exports omit run content by default; a full scrubbed bundle can replay with `runs replay-bundle FILE PROJECT --execute-local` only against matching trusted local code. Replay never falls back to live model or tool requests through the supported runtime.
 
 ## Python projects
 
@@ -165,7 +211,7 @@ npm run build
 npm test
 ```
 
-Tests do not invoke paid models. Workbench integration tests install generated TypeScript dependencies, so registry access or a populated package cache is required. Set `NB_AGENT_PYTHON=/absolute/path/to/python3` to include the Python CLI integration test; it creates an isolated temporary environment and installs its native runtime dependencies. See [VERIFICATION.md](docs/VERIFICATION.md) for framework smoke commands, exact evidence, and what remains unverified.
+Tests do not invoke paid models. Workbench integration tests install generated TypeScript dependencies, so registry access or a populated package cache is required. Set `NB_AGENT_PYTHON=/absolute/path/to/python3` to include Python CLI and durable native/LangGraph integration tests; they create isolated temporary environments and install their runtime dependencies. `uv` must be available. See [VERIFICATION.md](docs/VERIFICATION.md) for framework smoke commands, exact evidence, and what remains unverified.
 
 ## Open source
 

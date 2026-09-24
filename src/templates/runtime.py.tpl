@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 import httpx
 from jsonschema import Draft7Validator
+from session import durable_enabled, durable_step
 
 ROOT = Path(__file__).resolve().parent
 SPEC = json.loads((ROOT / "agent-spec.json").read_text())
@@ -45,6 +46,7 @@ def validate_url(url):
     return url
 
 async def request_json(method, url, ctx, **kwargs):
+    if os.environ.get("INSTRILO_REPLAY") == "1": raise RuntimeError("Network dispatch is forbidden during replay")
     validate_url(url)
     async with httpx.AsyncClient(timeout=min(remaining(ctx), CONNECTION.get("timeoutMs", 60000) / 1000), follow_redirects=False) as client:
         async with client.stream(method, url, **kwargs) as response:
@@ -80,18 +82,31 @@ async def execute_tool(name, args, ctx):
     Draft7Validator(tool["inputSchema"]).validate(args)
     if not set(tool["requiredScopes"]).issubset(ctx["scopes"]): raise PermissionError("Missing tool scopes")
     digest = approval_digest(name, args)
-    if tool["requiresApproval"] and digest not in ctx["approvals"]:
+    if not durable_enabled and tool["requiresApproval"] and digest not in ctx["approvals"]:
         raise PermissionError("Approval required for exact call SHA256=" + digest)
     if ctx["tool_calls"] >= SPEC["agent"]["limits"]["maxSteps"]: raise RuntimeError("Tool call budget exhausted")
     ctx["tool_calls"] += 1
     if tool["requiresApproval"]: ctx["approvals"].discard(digest)
-    headers = {"Authorization": "Bearer " + env(tool["authEnv"])} if tool.get("authEnv") else {}
-    kwargs = {"params": {k: str(v) if not isinstance(v, (dict, list)) else canonical(v) for k, v in args.items()}} if tool["method"] == "GET" else {"json": args}
-    value = await request_json(tool["method"], tool["url"], ctx, headers=headers, **kwargs)
-    ctx["trace"].append({"event": "tool", "name": name, "approvalDigest": digest, "status": "ok"})
-    return value
+    async def dispatch():
+        headers = {"Authorization": "Bearer " + env(tool["authEnv"])} if tool.get("authEnv") else {}
+        kwargs = {"params": {k: str(v) if not isinstance(v, (dict, list)) else canonical(v) for k, v in args.items()}} if tool["method"] == "GET" else {"json": args}
+        value = await request_json(tool["method"], tool["url"], ctx, headers=headers, **kwargs)
+        ctx["trace"].append({"event": "tool", "name": name, "approvalDigest": digest, "status": "ok"})
+        return value
+    return await durable_step("tool", {"name": name, "arguments": args}, dispatch)
 
 async def model_step(messages, ctx):
+    prior = dict(ctx["usage"])
+    async def dispatch():
+        before = dict(ctx["usage"])
+        message = await live_model_step(messages, ctx)
+        return {"message": message, "usageKnown": ctx["usage_known"], "usage": {"inputTokens": ctx["usage"]["inputTokens"] - before["inputTokens"], "outputTokens": ctx["usage"]["outputTokens"] - before["outputTokens"]}}
+    packet = await durable_step("model", {"messages": messages}, dispatch)
+    ctx["usage_known"] = packet["usageKnown"]
+    ctx["usage"] = {"inputTokens": prior["inputTokens"] + packet["usage"]["inputTokens"], "outputTokens": prior["outputTokens"] + packet["usage"]["outputTokens"]}
+    return packet["message"]
+
+async def live_model_step(messages, ctx):
     """Return a normalized Chat Completions-style assistant message."""
     remaining(ctx)
     kind = CONNECTION["kind"]

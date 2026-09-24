@@ -89,5 +89,5 @@ export interface EvalReport {
   id: string; createdAt: string; project: string; mode: 'live' | 'demo';
   split: string; total: number; passed: number; passRate: number;
   reviewed: number; synthetic: number; results: EvalResult[];
-  configHash: string; datasetHash?: string; judgeHash?: string; warnings: string[];
+  configHash: string; datasetHash?: string; judgeHash?: string; guidanceHash?: string; warnings: string[];
 }

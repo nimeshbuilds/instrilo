@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, readdir, stat, unlink } from 'node:fs/promises';
+import { mkdir, writeFile, readdir, stat } from 'node:fs/promises';
 import { resolve, join, relative, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
@@ -6,6 +6,8 @@ import YAML from 'yaml';
 import { defaultSpec, validateSpec, loadSpec, saveSpec, inspectGuidance, applyGuidance, writeExampleCases, readCases } from './core.js';
 import { generateArtifacts, writeArtifacts } from './generators.js';
 import { generate } from './providers.js';
+import { adapterFingerprint, generatePluginArtifacts, withAdapterRegistryLock } from './adapters.js';
+import { dependencyLockStatus, generatorMetadata, regenerate, type RegenerationOptions, type RegenerationPlan } from './regeneration.js';
 import type { ProjectSpec, BuildResult, GuidanceReport } from './types.js';
 
 export function safeChild(root: string, child: string): string {
@@ -36,7 +38,8 @@ export async function createProject(root: string, options: { name: string; langu
   return { dir, spec };
 }
 
-export async function buildProject(manifest: string, outputDir?: string, overwrite = false): Promise<BuildResult> {
+export type RegeneratedBuildResult = BuildResult & { plan: RegenerationPlan; applied: boolean };
+export async function buildProject(manifest: string, outputDir?: string, overwrite = false, options: RegenerationOptions = {}): Promise<RegeneratedBuildResult> {
   const spec = await loadSpec(manifest); const project = resolve(manifest, '..');
   const guidance = await inspectGuidance(resolve(project, spec.guidanceDir));
   const applied = applyGuidance(spec, guidance); const checked = validateSpec(applied);
@@ -44,27 +47,47 @@ export async function buildProject(manifest: string, outputDir?: string, overwri
   if (issues.some(x => x.level === 'error')) throw new Error(issues.filter(x => x.level === 'error').map(x => x.message).join('\n'));
   const destination = outputDir ? resolve(outputDir) : join(project, 'generated');
   const artifacts = generateArtifacts(applied, guidance);
+  const extensions = async () => {
+    const before = await adapterFingerprint(project);
+    const generated = await generatePluginArtifacts(project, applied, guidance);
+    const after = await adapterFingerprint(project);
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('Installed adapters changed during generation. Retry with a stable registry.');
+    artifacts.push(...generated);
+    return after;
+  };
+  // Preview must not create project metadata. Applying the reviewed plan reruns
+  // generation under the mutation lock and validates its exact plan hash.
+  const adapters = options.dryRun ? await extensions() : await withAdapterRegistryLock(project, extensions);
+  const metadata = await generatorMetadata(Object.fromEntries(adapters.map(adapter => [adapter.id + '@' + adapter.version, adapter.sha256])));
   const cases = await readCases(resolve(project, spec.evaluation.dataset));
   artifacts.find(a => a.path === 'evals/cases.jsonl')!.content = cases.map(c => JSON.stringify(c)).join('\n') + '\n';
   artifacts.find(a => a.path === 'evals/rubric.md')!.content = spec.evaluation.rubric + '\n';
   artifacts.push({ path: manifestName, content: YAML.stringify({ ...spec, guidanceDir: './guidance', evaluation: { ...spec.evaluation, dataset: './evals/cases.jsonl' } }) });
   for (const file of guidance.files) artifacts.push({ path: `guidance/${file.path}`, content: file.content });
   const generatedFiles = Object.fromEntries(artifacts.map(a => [a.path, createHash('sha256').update(a.content).digest('hex')]));
-  let previousFiles: Record<string, string> = {};
-  if (overwrite) {
-    try { const old = JSON.parse(await readFile(safeChild(destination, 'build-lock.json'), 'utf8')); previousFiles = old.generatedFiles || {}; } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
+  artifacts.push({ path: 'build-lock.json', content: JSON.stringify({ schemaVersion: '1', generator: metadata.version,
+    generatorFingerprint: metadata.fingerprint, templateHashes: metadata.templateHashes, adapterHashes: metadata.adapterHashes,
+    manifestHash: createHash('sha256').update(JSON.stringify(spec)).digest('hex'), sourceHash: createHash('sha256').update(JSON.stringify(applied)).digest('hex'),
+    runtimeSnapshotHash: createHash('sha256').update(artifacts.find(a => a.path === 'agent-spec.json')!.content).digest('hex'), guidanceSource: guidance.root,
+    guidance: guidance.files.map(f => ({ path: f.path, sha256: f.sha256 })), generatedFiles,
+    dependencyReproducibility: 'separate dependency locks and a frozen installation are required',
+    verification: 'generated; run local checks and target smoke tests before release' }, null, 2) + '\n' });
+  const protectedPaths = ['agent-spec.json', 'guidance.md', 'guidance-manifest.json', 'build-lock.json', manifestName, 'guidance/', 'evals/', ...(options.protectedPaths ?? [])];
+  const result = await regenerate(destination, artifacts, metadata, { ...options, protectedPaths }, overwrite);
+  for (const change of result.plan.changes) {
+    if (change.action === 'preserve' && change.reason === 'Modified obsolete artifact becomes user-owned') issues.push({ level: 'warning', code: 'MODIFIED_OBSOLETE_ARTIFACT', path: change.path, message: `${change.path} is no longer generated but has manual edits. It was preserved as a user-owned file.` });
+    if (change.action === 'conflict') issues.push({ level: 'error', code: 'REGENERATION_CONFLICT', path: change.path, message: change.reason });
   }
-  artifacts.push({ path: 'build-lock.json', content: JSON.stringify({ schemaVersion: '1', generatedAt: new Date().toISOString(), generator: '0.1.0', manifestHash: createHash('sha256').update(JSON.stringify(spec)).digest('hex'), sourceHash: createHash('sha256').update(JSON.stringify(applied)).digest('hex'), runtimeSnapshotHash: createHash('sha256').update(artifacts.find(a => a.path === 'agent-spec.json')!.content).digest('hex'), guidanceSource: guidance.root, guidance: guidance.files.map(f => ({ path: f.path, sha256: f.sha256 })), generatedFiles, verification: 'generated; run local checks and target smoke tests before release' }, null, 2) + '\n' });
-  const files = await writeArtifacts(destination, artifacts, { overwrite });
-  for (const [path, hash] of Object.entries(previousFiles)) {
-    if (generatedFiles[path] || path === 'build-lock.json') continue;
-    const obsolete = safeChild(destination, path);
+  if (result.applied) {
     try {
-      if (createHash('sha256').update(await readFile(obsolete)).digest('hex') === hash) await unlink(obsolete);
-      else issues.push({ level: 'warning', code: 'MODIFIED_OBSOLETE_ARTIFACT', path, message: `${path} is no longer generated but has manual edits. It was preserved; review it before exporting.` });
-    } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
+      const dependencies = await dependencyLockStatus(destination);
+      if (dependencies.consistency === 'stale') issues.push({ level: 'warning', code: 'STALE_DEPENDENCY_LOCK', path: dependencies.lockfile ?? undefined, message: 'Generated dependencies changed. Regenerate and review the dependency lock before a frozen installation.' });
+    } catch { issues.push({ level: 'warning', code: 'DEPENDENCY_LOCK_UNVERIFIED', message: 'The dependency lock could not be inspected safely. Review it before installation.' }); }
   }
-  return { outputDir: destination, files, issues, spec: applied };
+  return { outputDir: destination, files: result.files, issues, spec: applied, plan: result.plan, applied: result.applied };
+}
+export async function planProject(manifest: string, outputDir?: string, options: RegenerationOptions = {}): Promise<RegenerationPlan> {
+  return (await buildProject(manifest, outputDir, true, { ...options, dryRun: true })).plan;
 }
 
 export async function refineProject(spec: ProjectSpec, report: GuidanceReport, signal?: AbortSignal): Promise<{ description: string; systemPrompt: string; questions: string[]; rationale: string }> {

@@ -2,157 +2,103 @@
 
 Build with intent. Ship with evidence.
 
-Status: September 24, 2026. **IMPLEMENTED** describes behavior in this repository; **PLANNED** describes proposed work, not an available feature or a delivery commitment. Verification levels are recorded separately in [VERIFICATION.md](VERIFICATION.md).
+Status: September 24, 2026, version 0.2. **IMPLEMENTED** means a bounded operation exists in this repository. **PLANNED** means it is not shipped. A local implementation or fixture is not a live-provider, cloud, security, or statistical quality certification; see [VERIFICATION.md](VERIFICATION.md).
 
-## The product direction
+## Product direction
 
-Instrilo should make it easy to **turn requirements into an agent repository people can test, change, and maintain**. The first audience to validate is small engineering teams and agencies delivering agents to different clients. They need to explain why a release is acceptable, reproduce a failure, and upgrade a project without losing their own work.
+Instrilo turns product intent into an agent repository people can inspect, test, change, and maintain. The first audience to validate is small engineering teams and agencies delivering agents for different clients. They need to explain why a release is acceptable, reproduce failures, and update infrastructure without losing their work.
 
-The [competitive research](COMPETITORS.md) shows that creation, graph editors, tracing, judges, MCP, and deployment templates already exist in integrated products. Adding all of them is not, by itself, a competitive advantage. Our proposed advantage is a coherent, inspectable engineering workflow across supported **Python and TypeScript** projects, with source and evidence that remain usable outside this tool. This is a positioning hypothesis to test with users, not a claim of exclusivity.
+The [competitive research](COMPETITORS.md) shows that creation, graph editors, tracing, judges, MCP, and deployment templates already exist. Our positioning hypothesis is the complete, inspectable engineering workflow across **Python and TypeScript**, with source and evidence usable outside Instrilo. A long feature checklist does not establish an advantage.
 
-Success should look like this: a maintainer changes a requirement, sees which behavior and examples it affects, inspects a code diff, reproduces relevant failures, and exports a reviewed release. The community should be able to extend that workflow without maintaining a private fork of the entire application.
+Six milestones now have working local implementations. Their original broader ambitions remain divided into completed scope and explicit follow-up work below. They should not be presented as six production-complete platforms.
 
-## What is already implemented
+## Current baseline
 
-| IMPLEMENTED | Practical boundary |
-| --- | --- |
-| Shared CLI and local app, guidance import/interview/editing, follow-up questions | Missing requirements remain visible; conflict detection is bounded and partly syntactic. |
-| Independent builder, runtime, and judge connections | Actual provider/account entitlement still needs a deliberate live check. |
-| Native, LangGraph, and OpenAI Agents generation in Python and TypeScript; CrewAI in Python | Support is combination-specific. A Python-only framework is not represented as TypeScript support. |
-| Actual runtime execution, deterministic checks, optional LLM judges, traces and comparison fingerprints | There is no replay engine, human calibration workbench, or statistically established quality guarantee. |
-| Build fingerprints and refusal to run stale configuration; obsolete generated-file cleanup | Changed obsolete files are preserved. **`build --overwrite` can still replace manual edits to files that remain generated.** There is no three-way merge or general custom-code preservation. |
-| Scoped HTTP tools, exact-call approval digests, inbound JWT, bounded execution | There is no durable single-use approval ledger or automatic tenant-specific data filtering. |
-| Owned source, portable manifest, guidance and evaluation export; cloud and MCP artifacts | Local protocol/framework checks are recorded. Real cloud deployments and account connections are not implied. |
+| Area | IMPLEMENTED in 0.2 | Practical boundary |
+| --- | --- | --- |
+| A. Requirements and release evidence | Reviewed source references, versioned case links, staleness, reasoned waivers, strict policy and JSON release decisions | Coverage is a human assertion; local records are not independent attestation. |
+| B. Safe regeneration and upgrades | Retained baselines, dry runs, reviewed plan hashes, preservation/conflicts, opt-in line merges, journal recovery, legacy migration, npm/uv lock operations | Text merges need tests; remote model aliases and whole build environments are not frozen. |
+| C. Failure bundles and replay | Content-consented recording, scrubbed export/import, actual frozen replay, explicit replay of a complete portable bundle against matching local code | Native/LangGraph only, Python and TypeScript. No live fallback or imported executable code. |
+| D. Adapter contract | Versioned manifests, content pins, explicit code trust, local conformance, namespaced artifact extensions, authenticated provider gateway | Framework/target/host extensions augment built-ins; the public contract does not replace the built-in security/runtime implementation. |
+| E. Human review and calibration | Blind queues, exact-output bindings, immutable labels/corrections, disagreement handling, descriptive false-pass/false-fail counts | Reviewer identity is self-asserted; no statistical reliability or automatic rubric calibration claim. |
+| F. Durable approvals and observed graphs | Persisted native/LangGraph runs, exact action approvals, expiry/denial, restart/resume, ambiguous-write reconciliation, graph from actual events | Local OS identity and filesystem locks; no hosted approval service or arbitrary graph editor. |
 
-The current implementation is the starting point for these milestones. Existing trace arrays and hashes must not be relabeled as completed replay, provenance, or release-management features.
+These build on the shared CLI/app, guidance interview/editing, independent builder/runtime/judge connections, framework generation, evaluation, scoped tools/JWT, and cloud/MCP artifacts. The CLI exposes its whole command tree through `instrilo help --all`, machine-readable metadata through `help --json`, and the operational manual through `explain`. The app uses the same evidence, execution, generation, and export functions rather than a separate project format.
 
-## Priorities and dependencies
+## A. Requirements linked to release evidence — IMPLEMENTED local baseline
 
-| Priority | PLANNED milestone | User outcome | Depends on |
+**Outcome:** a maintainer can tell which product promises have current reviewed checks and why a proposed release is blocked. Domain experts can contribute requirements and cases without changing a framework.
+
+The [evidence workflow](EVIDENCE.md) assigns stable requirement IDs and guidance-file hashes. Linking needs a reviewed requirement, a reviewed case, a reviewer, and a reason. Changes invalidate links instead of accepting yesterday's evidence. Release policies reject missing/stale/failed, demo, synthetic, waived, or disputed evidence by default; a judge-only link cannot satisfy deterministic coverage. Decisions capture the policy and evidence fingerprints. Both languages use the same sidecars while the source manifest remains schema v1.
+
+**Acceptance already exercised:** changed guidance/case content blocks old coverage; missing linked cases block release; deterministic assertions are recomputed; explicit policy exceptions remain visible; CLI exit 2 identifies a completed but blocked release gate. Human labels bind to the registered report rather than a mutable result ID alone.
+
+**PLANNED next:** requirement links to enforced tool/resource policies and trace-level assertions, not only output cases. Acceptance: a support fixture demonstrates that a forbidden send action cannot satisfy an approval requirement merely by printing the right phrase; changed authorization policy invalidates that evidence. Depend on F's events and a versioned assertion contract. Do not autoapprove model-proposed coverage.
+
+## B. Safe regeneration and reproducible upgrades — IMPLEMENTED local baseline
+
+**Outcome:** users can customize exported code and inspect an upgrade before applying it. Contributors can reproduce dependency conflicts with an actual package-manager lock.
+
+[Regeneration](REGENERATION.md) compares retained generator output, current files, and incoming artifacts. It preserves user-only edits and foreign files, refuses overlaps, optionally merges separate text edits, and retains immutable baselines. Protected configuration/guidance/dataset mirrors must be changed in their source. The transaction journal and explicit recovery refuse to erase post-crash edits. Legacy migration preserves available baseline content and labels missing historical content honestly. Dependency lock creation and frozen installation are explicit, separate operations.
+
+**Acceptance already exercised:** custom code survives unchanged generation; conflicts produce no artifact writes; changed obsolete files remain; stale plans and symlink paths reject; interrupted updates recover conservatively; dependency locks stay user-owned. Export holds the generation lock, rejects incomplete or stale source mirrors, and excludes private history.
+
+**PLANNED next:** maintained extension modules for custom tools plus a representative framework-upgrade fixture. Acceptance: a real Python and TypeScript customization survives a documented SDK/template upgrade and passes its behavior tests. Depend on D's stable extension points. Keep semantic/AST merging and reproducible historical compiler environments separate from the current line-merge guarantee.
+
+## C. Portable failure bundles and replay — IMPLEMENTED for native/LangGraph
+
+**Outcome:** a user can share a bounded failure record and reproduce supported behavior without repeating external side effects.
+
+[Recorded runs](RUNS.md) capture normalized model/tool events only with explicit content consent. Metadata-only exports are the default. Import validates and displays data without installing or executing anything. Complete, unredacted terminal bundles can be replayed through an explicit local-execution operation against an already built project whose source and dependency-lock fingerprints match. Replay returns recorded responses and rejects missing or changed fixtures with zero live model/tool fallback.
+
+**Acceptance already exercised:** a recorded read/approval/write flow resumes after process restart, replay works after the fixture provider/tool server is shut down, missing fixtures fail, and replay does not repeat a write. Python and TypeScript share the supported native/LangGraph contract. Redacted or incomplete records stay inspect-only; imported approvals cannot grant a new action.
+
+**PLANNED next:** standard trace export and bounded counterfactual evaluation with frozen tools. Acceptance: an explicit counterfactual command reports which fresh model calls occurred, never performs external writes, and labels its result separately from frozen replay. Depend on D's per-operation capability declarations. OpenAI Agents/CrewAI durable replay needs actual SDK fixtures before those combinations are advertised.
+
+## D. Adapter contract and conformance kit — IMPLEMENTED experimental contract
+
+**Outcome:** contributors can add useful project artifacts or a model transport without privately forking the entire application, and users can inspect the code and its declared permissions first.
+
+The API-v1 adapter manifest declares kind, version, operations, supported languages, entrypoint, and environment/network/filesystem intent. Explicit installation pins the bundle's content. Namespaced generation writes below `extensions/ADAPTER_ID/` and participates in safe regeneration. Completion providers can run behind an authenticated loopback OpenAI-compatible gateway. Conformance checks exercise envelopes, declared language generation, and rejection of invalid/unknown input without forwarding configured provider secrets.
+
+**Acceptance already exercised:** pinned code changes require reinstall; unsafe paths and reserved runtime environment variables reject; generation cannot overwrite protected built-in code; malformed completion results reject; local gateway auth, input limits and cancellation are testable without a paid account.
+
+**PLANNED next:** extract selected built-ins through the public contract and add operation-specific capability/conformance profiles. Acceptance: one built-in transport and one supported framework extension use the same interface as a third-party package; CLI/app/validation agree on declared supported operations; a missing tool-call or cancellation capability fails before execution. A framework-specific Python exception remains explicit rather than claiming TypeScript parity.
+
+Dependencies: A/B fingerprints and C/F event semantics. Passing a local envelope test is not broad SDK compatibility. Permission declarations are not an OS sandbox; adapters are trusted executable code. A plugin marketplace and hostile-code hosting are separate decisions.
+
+## E. Human review and judge calibration — IMPLEMENTED descriptive baseline
+
+**Outcome:** people can inspect whether automated judgments match task experts and preserve the reasons when they do not.
+
+The [review workflow](EVIDENCE.md) hides judge/check/prior-human verdicts by default, binds labels to report/case/output/judge hashes, and appends corrections without erasing original labels. Opposing active reviewers remain unresolved; abstentions do not count as consensus. Reports show sample size, agreement, false passes/fails, unreviewed cases, disagreements, and missing judge assessments. Changed rubric/configuration makes historical evidence stale without rewriting the old judgment.
+
+**Acceptance already exercised:** asynchronous stale-binding rejection, immutable label import/export, same-reviewer corrections, quorum enforcement, disagreement blocking, and exclusion of demo/scoring failures from calibration samples. The format is shared across Python/TypeScript outputs.
+
+**PLANNED next:** task-stratified sampling, reviewer assignment/adjudication, uncertainty estimates, and pairwise order controls if pairwise judges are introduced. Acceptance: reports distinguish sample selection from population reliability, a heldout rubric comparison preserves old judgments, and adversarial judge-input fixtures remain failures to assess rather than fabricated passes. Depend on stable A report/case references. Hosted reviewer authentication is part of a separate collaboration boundary.
+
+## F. Durable approvals and inspectable workflows — IMPLEMENTED local native/LangGraph
+
+**Outcome:** a write can pause for inspection, survive a process restart, and resume after approval of the exact action. The graph explains what actually happened.
+
+The [local journal](RUNS.md) binds approval to run/build/event/tool arguments, caller/tenant labels, and scopes. Approval is single-use and expires; denial, changed identity/build, stale digest, and concurrent claims reject. A started tool with an uncertain result requires external verification and recorded reconciliation. Replay supplies completed results without repeating external actions. JSON/Mermaid and the local app render observed events and pauses.
+
+**Acceptance already exercised:** concurrent reviewers/resumes cannot both claim an operation; rejected or expired approvals do not send a write; reconciliation continues without repeating the uncertain call; changed source or fixtures block replay. Available in native and LangGraph for both languages on macOS/Linux/WSL.
+
+**PLANNED next:** an authenticated remote approval service only when a real multi-user deployment needs it. Acceptance: separately authenticated reviewer identity, tenant/resource authorization, transactional cross-worker state, revocation and audit storage pass negative multi-user tests. Depend on C events, D capabilities, and a deployed identity/storage design. No local caller string is sufficient remote identity. General graph editing and round-trip framework conversion remain deferred.
+
+## Next priority: validate the workflow, then close observed gaps
+
+| Priority | PLANNED outcome | Acceptance | Dependencies |
 | --- | --- | --- | --- |
-| P0 | A. Requirements linked to release evidence | Know which promises were tested and which remain unresolved | Versioned requirement/case references and backward-compatible migration |
-| P0 | B. Safe regeneration and reproducible upgrades | Update generated infrastructure without losing custom work | File ownership contract, retained generation baseline, dependency locks |
-| P1 | C. Portable failure bundles and replay | Reproduce a reported failure without repeating external side effects | A's identifiers, B's versioned build inputs, a shared event schema |
-| P1 | D. Public adapter contract and conformance kit | Add an integration with evidence instead of broad compatibility claims | Extracted existing adapters; shared fixtures and version policy |
-| P1 | E. Human review and judge calibration | Understand when an automated score disagrees with people | A's evaluation references and versioned datasets/rubrics |
-| P2 | F. Durable approvals and inspectable workflows | Resume approved work safely and understand real control flow | C's event/state contract and D's capability declarations |
+| P0 | A complete design-partner workflow in both languages | Three teams complete brief → customization → reviewed release → failure reproduction → upgrade; record interventions and unresolved work | Current A–F baseline, task-specific reviewed fixtures |
+| P0 | One deliberately verified provider/target path | Document exact versions, account setup, auth failures, deployment/invocation/cleanup and remaining manual steps | Existing provider/deployment artifacts; operator-authorized accounts |
+| P1 | Stronger policy/trace evidence and adapter profiles | A forbidden tool action is enforced and traced; declared adapter capability failures surface before run | A, C, D, F |
+| P1 | Maintained extension points and framework upgrade fixtures | Real custom behavior survives a reviewed Python/TypeScript upgrade | B, D |
+| P2 | Multi-user review/approvals and statistically informed evaluation | Identity/tenant negative tests and correctly scoped uncertainty reports | E/F plus explicit hosted architecture |
 
-Start the schema/version work needed for A and B before expanding their UI. D can begin by wrapping the existing test fixtures, but its public compatibility promise should follow the first working adapters. F should support a narrow, explicitly tested workflow subset before adding more framework combinations.
+Gateway deployment policy remains **PLANNED**: role-specific allowed endpoints/models, externally managed credentials, resource authorization, time/concurrency limits, and auditable rejection before external requests. The current authenticated local adapter gateway is not this deployment policy product. Hard aggregate spending limits need reservation/accounting semantics and must handle uncertain provider billing; missing price data cannot become a false budget guarantee.
 
-## A. Requirements linked to release evidence — PLANNED, P0
+Do not prioritize integration count, a marketplace, autonomous agent teams by default, a universal graph canvas, or a new hosted observability platform ahead of demonstrated user work. Subscription adapters are conveniences within supported vendor interfaces, not the architectural foundation.
 
-**Why it matters:** a passing evaluation is hard to interpret when nobody knows which product requirements its cases cover. This is also a useful open-source contribution surface: domain experts can improve requirements, examples, and checks without writing an orchestration framework.
-
-Add stable requirement identifiers with guidance-source references and an explicit review state. Link each requirement to an enforced policy, deterministic check, reviewed example, human review, or an explicit “not yet testable” decision. Builder-proposed links remain proposals until reviewed; fluent generated explanations do not establish coverage.
-
-**Acceptance criteria:**
-
-- A sample support-drafting brief includes requirements for grounded answers, billing escalation, and approval before sending. Each has an inspectable source and evidence link, including a deliberately uncovered requirement.
-- Editing a source requirement marks affected links/results for review; it does not silently accept yesterday's result against changed requirements.
-- CLI and app show the same requirement/evidence status. A machine-readable release report distinguishes passed checks, failed checks, uncovered requirements, unreviewed cases, and waived items with a recorded reason.
-- CI can apply a project-owned release policy with explicit exit codes. Synthetic cases cannot be presented as human review, and a judge score alone cannot satisfy a configured deterministic policy requirement.
-- The example and report contract work for Python and TypeScript. Existing manifests migrate without inventing business rules or silently changing runtime behavior.
-
-**First contribution:** propose the requirement-to-case schema and a fixture showing a changed requirement invalidating one evidence link. Keep the first version small; do not add a general requirements-management database.
-
-## B. Safe regeneration and reproducible upgrades — PLANNED, P0
-
-**Why it matters:** code ownership is of limited value if the next generation step destroys the user's changes. Contributors also need dependency failures to be reproducible instead of depending on whichever package versions resolved that day.
-
-Define which files belong to the generator, which belong to the user, and where supported customizations live. Prefer stable extension modules for custom tools and business logic. Use a retained prior generation baseline for three-way comparison where files must be shared; do not promise arbitrary AST rewriting across every framework.
-
-**Acceptance criteria:**
-
-- A dry-run presents additions, changes, deletions, preserved user files, and conflicts before writing. These commands are proposed behavior, not current CLI options.
-- A user adds a custom tool and modifies generated behavior, then upgrades templates. User-owned files remain byte-for-byte unchanged; conflicting shared-file changes produce a reviewable conflict rather than a silent overwrite.
-- A failed or interrupted update preserves a recoverable previous project. Unsafe paths and symlinks remain rejected; modified obsolete files are not silently deleted.
-- A release lock records schema/generator/template versions, guidance hashes, relevant dependency locks, runtime versions, and configured model identifiers. Mutable provider aliases are explicitly marked as such; a lock cannot freeze a remote model the provider does not version.
-- Fresh environments can install a generated TypeScript project from its npm lock and a generated Python project from its Python dependency lock without a new dependency solve. Semantically identical inputs produce identical generated content apart from separately identified run metadata.
-- Schema migrations have a dry-run, backup and validation step, fixtures for older supported versions, and an explicit refusal path for unsupported conversions.
-
-**First contribution:** a file-ownership proposal and regression fixture for “custom tool survives template update.” Lockfile/schema work should land in small, independently reviewable changes.
-
-## C. Portable failure bundles and replay — PLANNED, P1
-
-**Why it matters:** an issue containing “the agent failed once” is expensive for both users and maintainers. A small, scrubbed reproduction can make a community issue actionable without sharing account credentials or production access.
-
-Introduce a versioned event format for observable model requests/responses, tool calls/results, authorization decisions, timing, and state transitions. Do not request or store private model reasoning. Sensitive content capture must be explicit and redactable; metadata-only recording should remain useful.
-
-**Acceptance criteria:**
-
-- Export/import a failure bundle containing the manifest/build references, relevant input/case, ordered events, and declared redactions. A contributor can inspect it without running the agent or executing bundled code.
-- Exact replay uses recorded model and tool responses and performs **zero external requests**. A missing fixture fails explicitly rather than falling back to a live provider.
-- A separate counterfactual mode can evaluate a changed agent against frozen tools. It clearly identifies newly invoked model calls and their cost/behavior limits; its results are not called deterministic replay.
-- Write tools are disabled during replay. Tests verify that replay of an earlier write never repeats the external action.
-- Python and TypeScript implementations produce semantically equivalent events for the same supported task, with adapters for framework-specific details instead of dropped events.
-- An issue-safe export removes test credentials and selected sensitive fields, records what was omitted, and warns when redaction prevents faithful reproduction. A standard trace export can integrate with existing observability tools without making one hosted service mandatory.
-
-**First contribution:** the event schema and one native Python/TypeScript replay fixture for a failed HTTP tool call. Add other frameworks after the contract survives that example.
-
-## D. Public adapter contract and conformance kit — PLANNED, P1
-
-**Why it matters:** the community should be able to add a provider, framework, or destination without changing several hardcoded lists. Users need to know which operations were tested, especially when an endpoint is only partially API-compatible.
-
-Extract distinct contracts for provider transport, framework generation, runtime target, and client/channel integration. Keep role selection separate. A CLI subscription session must not be advertised as a generic cloud API credential.
-
-**Acceptance criteria:**
-
-- At least one existing built-in adapter of each applicable kind uses the public contract before it is called stable. Capability negotiation rejects unsupported operations before generation or execution.
-- A sample third-party adapter can be developed locally with a pinned version, declared permissions, compatibility range, and reproducible tests. Installation is explicit: extensions are code, not implicitly trusted metadata.
-- The conformance kit checks protocol envelopes, timeouts/cancellation, size bounds, auth-reference handling, tool-call semantics, and negative authorization cases. Framework adapters run their real SDK against local fixtures.
-- The published matrix identifies language × framework × provider × target × operation, dependency versions, evidence date, and verification tier. A mocked transport test cannot label an account or cloud destination live-verified.
-- A contributor adding a generally applicable runtime capability supplies Python and TypeScript coverage. A framework-specific exception can remain Python-only if declared and tested; unsupported combinations fail clearly.
-- Live provider/cloud checks are opt-in and separate from baseline contributor tests. No secret or paid subscription is required to contribute a deterministic adapter fixture.
-
-**First contribution:** move the existing supported-combination data into one validated capability source and test that CLI, app, validator, generator, and documentation agree. A plugin marketplace is not required for this milestone.
-
-## E. Human review and judge calibration — PLANNED, P1
-
-**Why it matters:** configurable judges are already common. The useful next step is showing where their assessments agree or disagree with people who know the task. Reviewers need a manageable queue; maintainers need evidence for changing a rubric or threshold.
-
-**Acceptance criteria:**
-
-- Reviewers can label outputs, record a reason, and distinguish individual judgments from resolved labels. A blind-review option hides the judge's verdict until the human has submitted a judgment.
-- Reports show the sample size and judge-human agreement, including false-pass/false-fail counts for categorical labels and unresolved disagreements. They do not turn a small calibration set into a reliability claim.
-- Each assessment records dataset/case, rubric, judge configuration, and reviewer-label versions. Changed rubrics trigger a comparison rather than overwriting previous judgments.
-- Development and holdout sets are versioned separately. The builder's normal refinement path does not automatically receive holdout answers; promotion to a release evaluation is an explicit operation.
-- Fixtures cover malformed judge output, prompt injection inside evaluated text, and position/order effects for any pairwise evaluation feature. A scoring failure remains a failure to assess, not a passing result.
-- The same review/evidence format works for outputs from both languages; there is no separate TypeScript and Python review product.
-
-**First contribution:** a human-label import/export format and a small disagreement report using supplied synthetic fixtures. Do not auto-label those fixtures as real human review.
-
-## F. Durable approvals and inspectable workflows — PLANNED, P2
-
-**Why it matters:** today an exact-call digest can gate an action, but there is no durable pause/review/resume lifecycle. A useful graph should explain the actual execution and its pauses, not suggest capabilities the generated runtime lacks.
-
-Start with native and LangGraph support in both languages, if the conformance kit demonstrates the required semantics. Other adapters should declare unsupported behavior until their implementations are exercised.
-
-**Acceptance criteria:**
-
-- An agent pauses before a write, survives a process restart, and resumes only after an authorized reviewer approves the exact tool, arguments, caller/tenant, and relevant state. Denial, expiry, changed arguments, and reusing a consumed approval all reject the action.
-- Approval and run-state transitions are persisted transactionally and tested with concurrent workers. Tool adapters declare their idempotency behavior; an ambiguous network outcome is surfaced for reconciliation rather than promising impossible universal exactly-once delivery.
-- A read-only graph/trace view corresponds to actual nodes, transitions, pauses, and tool outcomes in supported runtimes. Native and framework implementations pass equivalent interruption/resume fixtures.
-- Any later graph editing is limited to declared operations and passes round-trip tests: manifest → framework → inspectable representation preserves meaning. Unsupported nodes cannot be silently approximated.
-- Request bodies, model outputs, and instruction files cannot authorize their own approvals. The review UI is an access-controlled client of the approval service, not its security boundary.
-
-**First contribution:** a state/approval contract and tests for expiry, altered arguments, and duplicate resume. A broad drag-and-drop editor comes after the execution contract.
-
-## Gateway and deployment policy — PLANNED, after adapter foundations
-
-Gateway-specific work should be driven by a real deployment rather than growing an entire enterprise control plane in advance. The first policy profile should restrict allowed endpoints/models by role, reference externally managed credentials, and apply the same policy during local validation and runtime execution. Outbound model identity remains separate from inbound caller identity and tool-resource authorization.
-
-Acceptance for a first deployment profile: a forbidden provider or missing scope is rejected before any external request; time/tool/concurrency limits are exercised; unknown price data remains unknown rather than becoming a false spending guarantee; a deliberate target smoke test records identities/configuration and cleanup. Hard aggregate spending limits need reservation/accounting semantics across workers and explicit handling of provider-side billing uncertainty.
-
-Depend on D's capability contract; integrate release evidence from A and approved-action state from F where needed. Hosted organization accounts, tenant administration, and managed cloud provisioning are separate future decisions. Configuration templates alone cannot establish tenant isolation.
-
-## What we will deliberately defer
-
-Do not prioritize a large integration count, a marketplace, autonomous agent teams by default, a generic graph canvas, or a new observability platform ahead of the milestones above. Reuse established storage, tracing, identity, and package tooling where it fits. Preserve usable local workflows and exports; a hosted account should not be a prerequisite for the core author/build/test loop.
-
-Subscription adapters are convenient where vendors support them, but changing vendor entitlements should not determine the architecture or the project's value proposition.
-
-## How priorities change
-
-Recruit three to five teams to complete the same brief → custom change → failure diagnosis → upgrade exercise in Python or TypeScript. Record setup interventions, time to an acceptable reviewed result, whether a failure can be reproduced, and whether custom work survives the upgrade. Compare against the relevant alternatives identified in [COMPETITORS.md](COMPETITORS.md); do not infer an advantage from a feature checklist.
-
-Promote a milestone when it removes repeated observed work, has an inspectable acceptance fixture, and has a plausible maintainer. Publish completed evidence rather than dates that assume every provider/framework/cloud combination is equivalent. Use [CONTRIBUTING.md](../CONTRIBUTING.md) to propose a bounded first contribution.
+Measure time to a reviewed result, setup interventions, failures reproduced, custom changes preserved, and continued use. Compare the same workflow against relevant alternatives rather than claiming advantage from a checklist. Publish verification evidence instead of dates that assume all providers, languages, frameworks, and targets are equivalent. Use [CONTRIBUTING.md](../CONTRIBUTING.md) for bounded contributions; the unimplemented acceptance items above are intended starting points.

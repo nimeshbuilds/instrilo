@@ -52,7 +52,8 @@ test('comparison matches case content and warns when references or judging crite
   assert.deepEqual(comparison.regressions, ['ticket-one']); assert.equal(comparison.comparableCases, 1); assert.equal(comparison.warning, undefined);
   spec.evaluation.rubric = 'Changed requirements';
   const changed = await evaluateProject(spec, '.', [{ ...cases[0], expected: 'A different reference' }], { runner });
-  await saveReport(second, changed); comparison = await compareReports(first, second);
+  await assert.rejects(() => saveReport(second, changed), /EEXIST/);
+  const third = join(root, 'third.json'); await saveReport(third, changed); comparison = await compareReports(first, third);
   assert.equal(comparison.comparableCases, 0); assert.deepEqual(comparison.regressions, []);
   assert.match(comparison.warning!, /Dataset content differs/); assert.match(comparison.warning!, /Judge, rubric or threshold differs/);
 });

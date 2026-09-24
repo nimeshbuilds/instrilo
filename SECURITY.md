@@ -12,6 +12,8 @@ This project is in early development. Security fixes target the current default 
 
 The workbench is a local development application. Its session URL grants access to local projects and should remain private. Exported agents are separate programs with their own credentials, identity configuration, tool permissions, and deployment exposure.
 
-Generated JWT verification checks configured identity claims and scopes. Tenant-specific data access still belongs to the tool backend. Exact-call approval digests enforce the configured call boundary, but single-use approvals require an application-side replay ledger. Cloud scaffolding does not configure an entire account or prove a deployment secure.
+Generated JWT verification checks configured identity claims and scopes. Tenant-specific data access still belongs to the tool backend. Recorded native/LangGraph runs add a local single-use approval ledger with expiry and explicit reconciliation of uncertain side effects. Direct runtime invocation outside that coordinator still needs an application-side ledger. The local OS operator owns reviewer identity; user-supplied names are not remote authentication. Cloud scaffolding does not configure an entire account or prove a deployment secure.
+
+Installed adapters are explicitly trusted executable code. Permission declarations and child-process bounds do not create an OS sandbox. Run recordings require explicit content capture; pattern redaction cannot identify every secret or personal detail. Inspect any export before sharing. Frozen replay intercepts the supported model/tool paths, not arbitrary network calls in custom code.
 
 Automated tests use mock providers and local authentication fixtures. Passing tests are evidence for those paths; they do not certify provider policy compliance, a live identity-provider setup, or a production deployment.

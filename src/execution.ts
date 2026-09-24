@@ -1,17 +1,23 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { assertGenerationReady, withGenerationLock } from './regeneration.js';
 import { access, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { generate } from './providers.js';
-import { inspectGuidance } from './core.js';
+import { inspectGuidance, loadSpec, readCases } from './core.js';
 import type { ProjectSpec, EvalCase, EvalReport, EvalResult } from './types.js';
 
-export interface RunResult { output: string; trace?: unknown[]; usage?: { inputTokens: number; outputTokens: number }; durationMs: number }
+export interface RunResult { output: string; status?: 'completed' | 'paused'; pause?: unknown; trace?: unknown[]; usage?: { inputTokens: number; outputTokens: number }; durationMs: number }
+export interface RunControl { rpc: (request: unknown) => Promise<unknown>; env?: Record<string, string>; beforeLaunch?: () => Promise<void> }
 async function exists(path: string) { try { await access(path, constants.F_OK); return true; } catch { return false; } }
 function killTree(child: ChildProcess) { try { if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch { child.kill('SIGKILL'); } }
 export async function assertBuildCurrent(spec: ProjectSpec, directory: string): Promise<void> {
+  await assertGenerationReady(directory);
+  await assertBuildContentCurrent(spec, directory);
+}
+export async function assertBuildContentCurrent(spec: ProjectSpec, directory: string): Promise<void> {
   const cwd = resolve(directory);
   const filename = spec.language === 'python' ? 'agent.py' : 'agent.ts';
   if (!(await exists(join(cwd, filename)))) throw new Error('Build the project before running it.');
@@ -22,10 +28,17 @@ export async function assertBuildCurrent(spec: ProjectSpec, directory: string): 
   const guidance = await inspectGuidance(lock.guidanceSource);
   if (JSON.stringify(guidance.files.map(f => ({ path: f.path, sha256: f.sha256 }))) !== JSON.stringify(lock.guidance)) throw new Error('Guidance changed after this build. Rebuild before running or evaluating.');
 }
-export async function runProject(spec: ProjectSpec, directory: string, input: string, signal?: AbortSignal): Promise<RunResult> {
+export async function runProject(spec: ProjectSpec, directory: string, input: string, signal?: AbortSignal, control?: RunControl): Promise<RunResult> {
+  await assertBuildCurrent(spec, directory);
+  return withGenerationLock(directory, async () => {
+    await assertBuildContentCurrent(spec, directory);
+    await control?.beforeLaunch?.();
+    return runProjectUnlocked(spec, directory, input, signal, control);
+  });
+}
+async function runProjectUnlocked(spec: ProjectSpec, directory: string, input: string, signal?: AbortSignal, control?: RunControl): Promise<RunResult> {
   const cwd = resolve(directory);
   const filename = spec.language === 'python' ? 'agent.py' : 'agent.ts';
-  await assertBuildCurrent(spec, cwd);
   const started = Date.now();
   let command: string;
   let args: string[];
@@ -40,16 +53,33 @@ export async function runProject(spec: ProjectSpec, directory: string, input: st
   }
   const stdout = await new Promise<string>((res, rej) => {
     if (signal?.aborted) return rej(new Error('Run cancelled.'));
-    const child = spawn(command, args, { cwd, shell: false, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
-    let out = '', err = '', done = false, termination: Error | undefined;
+    const child = spawn(command, args, { cwd, shell: false, detached: process.platform !== 'win32', stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...control?.env, INSTRILO_DURABLE_RUN: control ? '1' : '' } });
+    let out = '', err = '', buffer = '', size = 0, done = false, termination: Error | undefined;
+    let pending = Promise.resolve();
+    child.stdin.on('error', () => {});
+    if (!control) child.stdin.end();
     const settle = (error?: Error) => { if (done) return; done = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); error ? rej(error) : res(out); };
     const abort = () => { termination = new Error('Run cancelled.'); killTree(child); };
     const timer = setTimeout(() => { termination = new Error('Agent exceeded its configured time limit.'); killTree(child); }, spec.agent.limits.timeoutMs + 5000);
     signal?.addEventListener('abort', abort, { once: true });
-    child.stdout.on('data', (chunk: Buffer) => { out += chunk; if (out.length > 8_000_000) { termination = new Error('Agent output exceeded 8 MB.'); killTree(child); } });
+    child.stdout.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > (control ? 24_000_000 : 8_000_000)) { termination = new Error(control ? 'Agent output exceeded 24 MB.' : 'Agent output exceeded 8 MB.'); killTree(child); return; }
+      if (!control) { out += chunk; return; }
+      buffer += chunk.toString();
+      let newline: number;
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
+        if (line.startsWith('@@INSTRILO_RPC@@')) pending = pending.then(async () => {
+          const reply = await control.rpc(JSON.parse(line.slice('@@INSTRILO_RPC@@'.length)));
+          child.stdin.write(JSON.stringify(reply) + '\n');
+        }).catch(error => { termination = new Error(sanitizeError(error instanceof Error ? error.message : String(error))); killTree(child); });
+        else { out += line + '\n'; try { if (typeof JSON.parse(line).output === 'string') child.stdin.end(); } catch {} }
+      }
+    });
     child.stderr.on('data', (chunk: Buffer) => { err = (err + chunk).slice(-16000); });
     child.on('error', error => settle(new Error(`Cannot start ${spec.language} runtime: ${error.message}. Install generated project dependencies; set NB_AGENT_PYTHON if needed.`)));
-    child.on('close', code => settle(termination || (code === 0 ? undefined : new Error(`Agent exited with status ${code}. ${sanitizeError(err).slice(-3000)}`))));
+    child.on('close', code => { void pending.then(() => { out += buffer; settle(termination || (code === 0 ? undefined : new Error(`Agent exited with status ${code}. ${sanitizeError(err).slice(-3000)}`))); }); });
   });
   let envelope: any;
   try { envelope = JSON.parse(stdout.trim()); } catch {
@@ -58,7 +88,7 @@ export async function runProject(spec: ProjectSpec, directory: string, input: st
     }
   }
   if (!envelope || typeof envelope.output !== 'string') throw new Error('Runtime returned no valid {output} result. Inspect the generated runtime logs.');
-  return { output: envelope.output, trace: envelope.trace, usage: envelope.usage, durationMs: Date.now() - started };
+  return { output: envelope.output, ...(envelope.status === 'paused' ? { status: 'paused' as const, pause: envelope.pause } : {}), trace: envelope.trace, usage: envelope.usage, durationMs: Date.now() - started };
 }
 
 export function sanitizeError(text: string): string {
@@ -75,6 +105,19 @@ function parseJudge(text: string): { score: number; rationale: string } {
 }
 
 export async function evaluateProject(spec: ProjectSpec, directory: string, cases: EvalCase[], options: { split?: 'development' | 'holdout' | 'all'; signal?: AbortSignal; onProgress?: (done: number, total: number) => void; runner?: typeof runProject } = {}): Promise<EvalReport> {
+  // Injected runners are a unit-test seam; real evaluations bind all editable inputs.
+  const snapshot = async () => {
+    const project = dirname(resolve(directory));
+    const currentSpec = await loadSpec(join(project, 'agent-studio.yaml'));
+    const currentCases = await readCases(resolve(project, currentSpec.evaluation.dataset));
+    const lock = JSON.parse(await readFile(join(directory, 'build-lock.json'), 'utf8'));
+    const guidance = await inspectGuidance(lock.guidanceSource);
+    const files = guidance.files.map(({ path, sha256 }) => ({ path, sha256 })).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+    const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    return { configHash: digest(currentSpec), datasetHash: digest(currentCases), guidanceHash: digest(files) };
+  };
+  const before = options.runner ? undefined : await snapshot();
+  if (before && (before.configHash !== createHash('sha256').update(JSON.stringify(spec)).digest('hex') || before.datasetHash !== createHash('sha256').update(JSON.stringify(cases)).digest('hex'))) throw new Error('Evaluation inputs changed before execution. Reload configuration and dataset.');
   const selected = cases.filter(c => !options.split || options.split === 'all' || c.split === options.split);
   if (!selected.length) throw new Error('No cases in the selected dataset split. Add reviewed cases before evaluating.');
   const runtime = spec.connections[spec.roles.runtime];
@@ -107,21 +150,26 @@ export async function evaluateProject(spec: ProjectSpec, directory: string, case
     results.push(result); options.onProgress?.(results.length, selected.length);
   }
   const reviewed = selected.filter(c => c.source === 'reviewed').length;
+  if (before && JSON.stringify(before) !== JSON.stringify(await snapshot())) throw new Error('Configuration, dataset or guidance changed during evaluation. Discard this run and evaluate the current inputs.');
   return {
     id: randomUUID(), createdAt: new Date().toISOString(), project: spec.name,
     mode: demo ? 'demo' : 'live', split: options.split || 'all', total: results.length,
     passed: results.filter(r => r.passed).length, passRate: results.filter(r => r.passed).length / results.length,
     reviewed, synthetic: results.length - reviewed, results,
     configHash: createHash('sha256').update(JSON.stringify(spec)).digest('hex'),
+    ...(before ? { guidanceHash: before.guidanceHash } : {}),
     datasetHash: createHash('sha256').update(JSON.stringify(selected)).digest('hex'),
     judgeHash: createHash('sha256').update(JSON.stringify({ judge, rubric: spec.evaluation.rubric, threshold: spec.evaluation.threshold })).digest('hex'),
     warnings: [demo ? 'Offline smoke checks only. No live model quality was measured.' : 'LLM judgments require calibration against human labels; a passing score is not a reliability guarantee.', ...(reviewed < selected.length ? ['Synthetic examples are included. Review them before using this report for a release decision.'] : []), ...(options.split !== 'holdout' ? ['This is not an isolated holdout evaluation.'] : [])],
   };
 }
 
-export async function saveReport(path: string, report: EvalReport) { await mkdir(dirname(path), { recursive: true }); await writeFile(path, JSON.stringify(report, null, 2) + '\n'); }
+export async function saveReport(path: string, report: EvalReport) { await mkdir(dirname(path), { recursive: true }); await writeFile(path, JSON.stringify(report, null, 2) + '\n', { flag: 'wx', mode: 0o600 }); }
 export async function prepareProject(spec: ProjectSpec, directory: string, signal?: AbortSignal): Promise<{ message: string; output: string }> {
   await assertBuildCurrent(spec, directory);
+  return withGenerationLock(directory, async () => { await assertBuildContentCurrent(spec, directory); return prepareProjectUnlocked(spec, directory, signal); });
+}
+async function prepareProjectUnlocked(spec: ProjectSpec, directory: string, signal?: AbortSignal): Promise<{ message: string; output: string }> {
   const command = spec.language === 'python' ? 'uv' : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
   const args = spec.language === 'python' ? ['sync', ...(process.env.NB_AGENT_PYTHON ? ['--python', process.env.NB_AGENT_PYTHON] : [])] : ['install', '--ignore-scripts', '--no-audit', '--no-fund'];
   const logs = await new Promise<string>((res, rej) => {

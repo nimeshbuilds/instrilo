@@ -4,6 +4,7 @@ dist/
 .env.*
 !.env.example
 .studio/
+.instrilo/
 coverage/
 __pycache__/
 .venv/

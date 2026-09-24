@@ -27,13 +27,13 @@ The default test suite includes a real generated TypeScript dependency installat
 
 ## Include Python verification
 
-Use Python 3.11–3.13. `uv` is needed for the product's Python `prepare` command; the optional Python CLI integration test instead creates a temporary virtual environment and installs its minimal runtime dependencies with pip.
+Use Python 3.11–3.13. `uv` is needed for Python `prepare`, dependency locks, and the durable native/LangGraph tests. The standalone Python CLI test creates a temporary virtual environment with pip.
 
 ```sh
 NB_AGENT_PYTHON=/absolute/path/to/python3 npm test
 ```
 
-Without `NB_AGENT_PYTHON`, the Python CLI integration case is explicitly skipped. Report the skip rather than claiming both runtime languages passed. Keep framework environments separate: their SDK dependency requirements can differ.
+Without `NB_AGENT_PYTHON`, Python CLI and durable-runtime integration cases are explicitly skipped. Report the skip rather than claiming both runtime languages passed. Keep framework environments separate: their SDK dependency requirements can differ.
 
 For a manual native Python project:
 
@@ -57,7 +57,10 @@ Run focused checks during development, then the applicable repository checks bef
 | Generated runtime/framework code | Generator tests and the optional real-framework smoke suite for affected languages/combinations |
 | API, UI or project filesystem behavior | Server/security tests, build, and a local browser check of the affected flow |
 | Evaluation behavior | Evaluation tests, unchanged/changed case and rubric comparisons, explicit failure behavior |
-| Build/regeneration or deployment selection | Rebuild/deployment tests; use fixture scripts instead of real cloud actions |
+| Build/regeneration or deployment selection | Regeneration/rebuild/deployment tests; use fixture scripts instead of real cloud actions |
+| Requirement/review/release changes | Evidence/review and CLI-evidence tests; stale bindings, conflicting labels and denied releases |
+| Durable runs or approvals | Runs tests in both languages; zero-network replay, expiry, uncertain outcomes and concurrent operations |
+| Extensions and CLI | Adapter/CLI tests; `npm run docs:cli` then `npm run docs:check` |
 | Remote MCP source | MCP protocol smoke suite for both languages; no real host account is needed |
 
 For example:
@@ -100,7 +103,10 @@ The MCP suite uses real transports, a stub agent, and locally signed test JWTs. 
 | Framework and target generation | `src/generators.ts`, `src/templates/` |
 | Execution, evaluation and build freshness | `src/execution.ts` |
 | Project creation, refinement and rebuild | `src/workbench.ts` |
-| CLI and local application | `src/cli.ts`, `src/server.ts`, `src/web/` |
+| Evidence, review and release policy | `src/evidence.ts`, `src/review.ts` |
+| Regeneration, dependency provenance and durable runs | `src/regeneration.ts`, `src/runs.ts` |
+| Trusted extensions | `src/adapters.ts`, `src/adapter-worker.mjs` |
+| CLI and local application | `src/cli*.ts`, `src/project-ops.ts`, `src/server*.ts`, `src/web/` |
 
 Keep business logic in shared modules where the CLI and app need identical behavior. Change templates rather than checking in a patched `generated/` output as the implementation. Runtime fixes that apply to both languages need both templates and equivalent observable tests.
 
@@ -145,6 +151,6 @@ These are starting ideas, not claims that matching issues already exist:
 - Extend an existing provider fixture for a documented error envelope without making a live model call.
 - Document a platform-specific setup failure with the exact runtime versions and a verified fix.
 - Improve keyboard access, focus handling, or an error message in one app flow, with a browser check.
-- Propose a small requirement-to-case fixture or file-ownership example for the roadmap's next milestone.
+- Add a domain-specific requirement-to-case example or a custom-code regeneration regression.
 
 Do not report an exploitable vulnerability with secrets or a public attack reproduction in an ordinary issue. If the published repository provides private vulnerability reporting, use it; otherwise ask the maintainer for a private reporting route before sharing exploit details. No private contact address or response-time guarantee is implied here.

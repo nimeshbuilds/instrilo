@@ -1,6 +1,6 @@
 # Instrilo — product specification
 
-Version 0.1 · 2026-09-23
+Version 0.2 · 2026-09-24
 
 ## Product decision
 
@@ -15,6 +15,21 @@ The product should answer five practical questions:
 3. Does it pass reviewed examples, and what changed when a prompt or model changed?
 4. Which provider/framework/target combinations have actually been verified?
 5. Can the user export, run, and own the resulting code?
+
+## Version 0.2 implementation boundary
+
+The local CLI and application implement creation, inspection, configuration, guidance interviews/editing, generation, execution, evaluation, and source export. Version 0.2 adds six connected engineering workflows. “Implemented” describes this bounded local behavior; broader acceptance goals remain in [ROADMAP.md](ROADMAP.md), and actual verification evidence is recorded in [VERIFICATION.md](VERIFICATION.md).
+
+| IMPLEMENTED workflow | Concrete behavior | Boundary |
+| --- | --- | --- |
+| Requirements → release evidence | Reviewed source hashes, case links, staleness, waivers and strict policy decisions | Case coverage is a reviewed assertion, not proof of every business promise. |
+| Safe regeneration | Retained baselines, dry-run plans, conflict refusal, optional separate-line merges, journal recovery, legacy migration, dependency-lock commands | No arbitrary semantic merge or frozen historical compiler/model environment. |
+| Recorded failures and replay | Consented event recording, scrubbed bundles, actual replay using frozen responses, explicit portable-bundle replay against matching local code | Native/LangGraph in Python and TypeScript; no imported code execution or live fallback. |
+| Community adapters | API-v1 manifests, pinned trusted code, namespaced generation, authenticated provider gateway, local conformance | Framework/target/host extensions augment built-ins. Declared permissions do not create a code sandbox. |
+| Human review and calibration | Blind queue, exact-output bindings, append-only corrections, disagreement and false-pass/false-fail counts | Local reviewer names are self-asserted; counts do not establish production reliability. |
+| Durable approvals and observed graphs | Local pause/approve/deny/resume, expiry, uncertain-effect reconciliation, JSON/Mermaid trajectory | Native/LangGraph only; local OS identity and filesystem locks, no hosted approval service. |
+
+Cloud and desktop/chat artifacts remain separately configured delivery integrations. Their existence does not establish a live account connection, completed deployment, or external identity setup. A release gate emits evidence and never deploys implicitly.
 
 ## Source and decision record
 
@@ -52,9 +67,10 @@ A custom gateway is a connection transport. Its actual model capabilities, tool 
 4. Choose language, framework, independent provider roles, tool permissions, and delivery target.
 5. Validate configuration and show unsupported combinations before generation.
 6. Generate the project and review its behavior, permission policy, and target artifacts.
-7. Run a local preview and evaluation cases. Inspect failures and traces.
-8. Add real reviewed examples and holdout cases. Calibrate the judge.
-9. Deploy through an explicit supported target workflow when credentials and target-specific requirements are ready.
+7. Run a local preview and evaluation cases. Opt into recorded content when durable approval or frozen replay is needed for a supported runtime.
+8. Add real reviewed examples and holdout cases, link reviewed requirements, and collect bound human labels. Inspect disagreements and the judge calibration sample.
+9. Apply the project-owned release policy and inspect missing or stale evidence. Review source updates through the regeneration plan.
+10. Export a coherent current source snapshot or explicitly deploy through the selected target workflow when its credentials and prerequisites are ready.
 
 ### No existing guidance
 
@@ -80,10 +96,14 @@ Web app ──────┘        │
                       ├── framework generator ── owned Python or TypeScript code
                       ├── runtime connection ── agent execution
                       ├── evaluator ── deterministic checks + optional judge
+                      │       └── evidence / review / release decisions
+                      ├── run journal ── exact approvals / resume / frozen replay
+                      ├── regeneration ── retained baselines / diff / recovery
+                      ├── pinned extensions ── namespaced artifacts / provider bridge
                       └── delivery generator ── runtime / harness / host artifacts
 ```
 
-The manifest is the source of truth. CLI and app call the same parser, validator, guidance scanner, generator, and evaluation functions. The web app must not acquire a second, incompatible configuration model.
+The manifest is the source of configuration truth. CLI and app use the same parser, validator, guidance scanner, generator, evaluation, evidence, run-state, and export functions. Versioned project sidecars retain state that does not belong in the configuration. The web app must not acquire a second, incompatible project model.
 
 Critical infrastructure is generated from maintained templates and validated specifications. The model can draft instructions and propose configurations. The model should not freely improvise authentication verification, credential storage, deployment permissions, or tool authorization code.
 
@@ -103,11 +123,25 @@ Connection credentials are environment-variable references. The project file mus
 
 The current schema deliberately rejects unknown keys. Future changes need an explicit schema version and migration instead of silently ignoring intended security settings.
 
-### Desired adapter boundaries
+### State and source ownership
 
-Provider adapters supply connection validation and generation. CLI builder adapters additionally describe session prerequisites and headless limitations. Framework generators validate supported features and generate actual framework code. Runtime-target adapters plan/package/deploy. Harness and host adapters generate their own instruction and bridge artifacts. Evaluation is a shared concern across generated frameworks.
+The compatibility manifest remains `agent-studio.yaml`, schema v1. Source guidance and cases stay in their configured project directories. `.instrilo/evidence/` stores requirements, report snapshots, labels, policy and release decisions; `.instrilo/runs/` stores consented recorded content and approval state; `.instrilo/adapters/` stores pinned trusted bundles. The generated directory's `.instrilo/` stores retained baselines, current-generation references and a transaction journal.
 
-Later versions should add explicit capabilities, structured compatibility diagnostics, immutable build locks, generation provenance, migration commands, and replayable tool fixtures. Avoid adding a universal graph intermediate representation before multiple real integrations demonstrate which semantics can safely be shared.
+These local stores use bounded validated files, atomic replacement, hashes, and exclusive writer locks. They detect stale or accidentally altered data; an OS owner who can rewrite the files is inside the trust boundary. They are not a remote attestation service or an encrypted multi-tenant database. History and recorded content may be sensitive.
+
+Safe generation compares the prior generated baseline, current files and proposed output. User-only edits and unrelated files survive. Both sides changing a file produce a conflict unless an explicitly requested conservative line merge succeeds. A reviewed plan hash guards the apply step. Protected manifest, guidance, runtime-config and dataset mirrors must be edited at their source. Recovery validates journal contents before restoring an interrupted update. [REGENERATION.md](REGENERATION.md) defines migration and conflict-resolution limits.
+
+Source ZIP export holds the generation lock, refuses an incomplete generation or stale configuration/guidance/cases, and verifies the portable mirrors. It excludes local evidence/run/baseline history, dependencies, environment files and known credential paths. It is source delivery, not a full private-state backup; custom files still require inspection before sharing.
+
+### Current adapter boundaries and remaining work
+
+Built-in transports validate connections and execute model calls. CLI transports additionally describe session prerequisites and headless limitations. Built-in framework generators validate supported features and generate actual framework code. Runtime-target and host generators emit their respective packaging or bridge artifacts. Evaluation remains shared across generated frameworks.
+
+The community API-v1 contract declares provider/framework/target/host kind, version, language support, generate/complete operations, entrypoint and permission intent. Installation requires explicit trust and pins the bundle's content. Generation extensions add non-executable artifacts under `extensions/ADAPTER_ID/`; they cannot replace built-in runtime or authentication code. Provider completion extensions can serve an authenticated loopback OpenAI-compatible gateway, which the normal gateway connection consumes. Local conformance checks validate envelopes and negative inputs without forwarding declared provider secrets.
+
+The public extension interface is experimental. Built-ins have not all been extracted through it, and a passing envelope test does not establish tool-call semantics, SDK parity, live-provider behavior, or deployment safety. Network/filesystem permission declarations do not sandbox JavaScript; extensions execute as the local OS user. Stronger capability profiles, selected built-in adoption and wider conformance remain roadmap work.
+
+Generation already records generator/template/adapter fingerprints; npm and uv lock operations are explicit. These fingerprints do not freeze a mutable remote model or reproduce an entire historic environment. The graph view derives from observed run events. Arbitrary editable graph conversion remains deferred until real integrations establish shared semantics.
 
 ## Supported combinations and verification policy
 
@@ -171,6 +205,14 @@ HTTP tool URLs are absolute HTTP(S) URLs without embedded credentials or fragmen
 
 For a hosted builder product, generated code/builds need isolated execution, scoped secret injection, project/tenant authorization, bounded subprocesses, and a controlled filesystem workspace. A local prototype is not evidence those hosted boundaries are complete.
 
+### Local durable approval boundary
+
+Native and LangGraph runtimes in both languages can opt into persisted model/tool events. An approval-required call pauses before HTTP dispatch. Its digest binds run, build, event, exact arguments, caller/tenant labels, and scope set. Approvals expire, are claimed once under a run lock, and do not survive identity/build changes. Denial and concurrent claims are explicit errors.
+
+The local OS user is the approving authority; caller, tenant and reviewer strings are labels asserted by that user. A local app session token is not organizational identity. These APIs must not be exposed to remote callers as if arbitrary labels authenticated a reviewer.
+
+An operation started before a crash or failed response may already have changed an external system. It requires manual external verification and a recorded reconciliation result; automatic resume does not repeat that uncertain action. There is no universal exactly-once guarantee. [RUNS.md](RUNS.md) defines supported platforms, lock recovery, expiry, denial and reconciliation.
+
 ## Evaluation model
 
 Evaluation begins with the task, not a generic “agent quality” score.
@@ -188,7 +230,21 @@ Evaluation begins with the task, not a generic “agent quality” score.
 
 The two seed examples are explicitly synthetic development cases about clarification and undefined business rules. They demonstrate dataset format. They are not task coverage, a reviewed benchmark, a safety assessment, or a launch gate. The default numeric threshold is configuration scaffolding and has no empirical calibration.
 
-Longer-term evaluation work includes versioned datasets, baseline comparisons, paired comparisons with order controls, judge-human agreement, uncertainty/sample-size reporting, trace-level checks, and adversarial cases selected from observed failures.
+### Implemented release and review evidence
+
+[EVIDENCE.md](EVIDENCE.md) defines stable requirements with reviewed guidance-source hashes and case links. Editing a source, requirement or case invalidates prior coverage. A release report binds the current configuration, inspected guidance, selected dataset, individual cases, and judge/rubric/threshold. Real evaluation checks these editable inputs before and after execution and rejects changes during the run. Old reports lacking required fingerprints cannot pass a release gate.
+
+The versioned project policy defaults to a reviewed holdout report, passing cases, deterministic coverage per requirement, and no demo/synthetic/waived exceptions. The gate independently recomputes output checks and requires every linked case to occur in the report. Overrides are explicit and visible; allowed demo evidence remains `smoke-only`. A waiver records a reviewer/reason and optional expiry. A release decision does not certify semantic completeness or deploy the project.
+
+Blind review hides automated and prior human verdicts. Labels bind to the report, case, exact output and judge hashes. Corrections append and supersede the same reviewer's active label; original labels remain immutable through the API. Opposing substantive reviewers remain unresolved rather than becoming an automatic majority vote. Human rejections/disagreements block linked release evidence; explicit policies can require a quorum of agreeing passes.
+
+Calibration reports sample size, agreement, false passes/fails, abstentions, unreviewed cases, unresolved disagreements and missing usable judge decisions. Demo and scoring failures cannot contribute successful calibration samples. Changed judge/rubric settings mark historical evidence stale without rewriting the recorded old decision. Local labels are not authenticated reviewer identities or statistical reliability estimates.
+
+### Implemented replay and remaining evaluation work
+
+Consented native/LangGraph recordings can replay actual generated code against saved model/tool results with no live fallback. Complete portable bundles can also replay through an explicit local-execution command after matching the already built source and dependency-lock fingerprints. Import alone is inspect-only: it cannot install source, run code, or grant approvals. Redacted, metadata-only, incomplete or mismatched records cannot silently fall back to a live provider. Replay is for trusted generated code, not an OS sandbox for arbitrary modifications.
+
+Still planned: trace/resource-policy assertions beyond output checks, statistically informed sampling and uncertainty estimates, reviewer assignment/adjudication with external identity, pairwise evaluation with order controls, counterfactual fresh-model evaluation against frozen tools, wider framework durable support, and standard observability export. These features need separate acceptance evidence rather than being inferred from existing hashes or trace arrays.
 
 ## Generated artifacts by destination
 
@@ -207,21 +263,23 @@ Artifacts may contain templates or manual prerequisites. The UI must label that 
 
 ## CLI and web application
 
-The CLI is the automation and power-user interface. The app is a visual workflow around the same core. The minimum shared operations are project creation/loading, interview guidance generation, inspection, validation, generation, preview execution, and evaluation.
+The CLI is the automation and power-user interface. The app is a visual workflow around the same core. In addition to create/build/run/evaluate, the CLI exposes configuration fields, independent connection/tool/case operations, safe guidance replacement, requirements/policy/review/release, generation planning/recovery/migration, dependency locks, recorded runs/approvals/replay, adapters, artifact inspection, and source export.
 
-The app should expose separate provider selectors for builder/runtime/judge, immediately explain invalid combinations, show unresolved guidance, and present generated files and evidence status. A graph is an optional visualization of a real workflow; it is not required to create a project or a substitute for control-flow semantics.
+Every command and option is discoverable through nested help, `instrilo help --all`, and `instrilo help --json`. `instrilo explain --list`, individual topics, and full-text search provide operational guidance without requiring a browser. CLI mutations validate before saving, retain backups, and use optimistic hashes where another editor could have changed a source file.
+
+The app exposes separate builder/runtime/judge selectors, guidance and invalid-combination feedback, evaluation editing/results, requirement links, blind review, calibration/release decisions, recorded runs/approvals, observed graphs, and generation previews. Advanced import/correction/adapter/dependency operations remain available in the CLI; the visual app need not duplicate every flag to preserve the shared data and validation contract. A graph describes actual execution and is not required for creation or a substitute for control-flow semantics.
 
 Provider secrets belong in environment variables or a future secret manager. The app should never put them in URLs, shared exported manifests, logs, generated instructions, or browser storage as a default persistence mechanism.
 
 ## Delivery plan
 
-### Local foundation
+### Implemented local foundation
 
-Implement the manifest, shared validator, guidance inventory, deterministic interview, explicit missing decisions, separate role connections, actual framework generators, local execution, evaluated outputs, owned source export, and a basic app using the same functions. Exercise error paths and unsafe configuration, not only happy paths.
+The manifest, shared validator, bounded guidance inventory, deterministic interview, explicit missing decisions, role connections, actual framework generators, local execution, evaluated outputs, source export, and shared app are implemented. Version 0.2 adds the bounded six-area workflows above. Tests exercise negative/stale/unsafe paths as well as local successes; see the verification record for their actual scope.
 
 ### Verified integrations
 
-Install and exercise generated projects for each advertised language/framework combination. Verify live providers and official CLI integrations with credentials supplied through their supported mechanisms. Verify one cloud target end to end before adding a broad “deploy anywhere” promise. Add compatibility evidence and target-specific failure explanations.
+Generated projects have local SDK/protocol fixtures for the documented combinations. Continue to verify live providers and official CLI integrations only with credentials supplied through their supported mechanisms. Verify one cloud target end to end before adding a broad “deploy anywhere” promise. Publish exact compatibility evidence and target-specific failure explanations; local fixtures do not satisfy this milestone's live-provider/target criteria.
 
 ### Design partners and product polish
 
@@ -229,13 +287,13 @@ Work with three target teams on a repeatable workflow. Observe setup time, task 
 
 ### Hosted collaboration
 
-Add project accounts, tenant isolation, execution sandboxes, encrypted credential storage, deployment identities, versioned runs, approval inboxes, human feedback, audit trails, and reproducible release promotion. Introduce billing only with observable usage and clearly defined entitlements.
+Add externally authenticated project accounts/reviewers, tenant/resource isolation, execution sandboxes, encrypted credential storage, deployment identities, cross-worker state, hosted approval inboxes and remote audit/release promotion. Local runs, reviews and approval files do not establish these hosted boundaries. Introduce billing only with observable usage and clearly defined entitlements.
 
 ### Broader ecosystem
 
-Expand frameworks, models, integrations, targets, and channels based on real demand. Add graph inspection/editing only when its semantics map correctly to generated framework code. Multi-agent collaboration, long-running durable workflows, resumable approval state, and advanced retrieval are separate features with distinct failure modes and evaluation needs.
+Expand frameworks, models, integrations, targets, and channels based on real demand. Observed graph inspection already exists; editing and round-trip conversion need their own semantics and acceptance tests. Durable support beyond the local native/LangGraph journal, hosted collaboration, multi-agent coordination, and advanced retrieval remain separate features with distinct failure modes.
 
-A four-to-six-week estimate applies only to a narrow local pilot with an experienced developer and aggressive scope cuts. It does not cover the entire provider/framework/target matrix, security review, enterprise identity, a production deployment platform, or the full roadmap.
+The broader roadmap has no delivery-date commitment. A narrow local pilot estimate must not be treated as an estimate for the entire provider/framework/target matrix, enterprise identity, security review, or a production deployment platform.
 
 ## Success measures and non-goals
 

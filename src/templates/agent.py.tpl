@@ -1,5 +1,6 @@
 import argparse, asyncio, contextlib, json, sys
 from runtime import SPEC, context, remaining, run_native
+from session import DurablePause
 
 async def framework_run(text, ctx):
     # FRAMEWORK_IMPLEMENTATION
@@ -19,6 +20,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         print(json.dumps(asyncio.run(run_agent(args.input))))
+    except DurablePause as pause:
+        print(json.dumps({"output": "", "status": "paused", "pause": pause.detail}))
     except Exception as error:
         print(json.dumps({"error": str(error)}), file=sys.stderr)
         sys.exit(1)

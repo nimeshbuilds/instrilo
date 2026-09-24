@@ -1,11 +1,14 @@
 import http from 'node:http';
+import { qualityRequest } from './server-quality.js';
+import { registerEvidenceReport } from './evidence.js';
+import { startRecordedRun, resumeRecordedRun, replayRun } from './runs.js';
+import { createProjectArchive } from './project-ops.js';
 import { readFile, writeFile, readdir, mkdir, lstat, unlink, open, mkdtemp, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { resolve, join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { randomBytes, timingSafeEqual, randomUUID, createHash } from 'node:crypto';
-import { zipSync, strToU8 } from 'fflate';
 import YAML from 'yaml';
 import { defaultSpec, validateSpec, loadSpec, saveSpec, inspectGuidance, writeGuidance, guidanceQuestions, readCases } from './core.js';
 import { providerCapabilities, diagnoseConnection } from './providers.js';
@@ -43,7 +46,7 @@ export async function startServer(options: { workspace: string; port?: number })
         res.writeHead(200, { 'Content-Type': file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' }); res.end(content); return;
       }
       if (!authorized(req)) return json({ error: 'Open the authenticated URL printed by instrilo app.' }, 401);
-      if (url.pathname === '/api/meta') return json({ version: '0.1.0', workspace: root, providers: providerCapabilities, questions: guidanceQuestions, defaultSpec: defaultSpec('my-agent'), frameworks: ['native', 'langgraph', 'openai-agents', 'crewai'], targets: ['local', 'docker', 'aws-agentcore', 'cloud-run', 'azure-container-apps'] });
+      if (url.pathname === '/api/meta') return json({ version: '0.2.0', workspace: root, providers: providerCapabilities, questions: guidanceQuestions, defaultSpec: defaultSpec('my-agent'), frameworks: ['native', 'langgraph', 'openai-agents', 'crewai'], targets: ['local', 'docker', 'aws-agentcore', 'cloud-run', 'azure-container-apps'] });
       if (url.pathname === '/api/projects' && req.method === 'GET') return json(await listProjects(root));
       if (url.pathname === '/api/projects' && req.method === 'POST') { const body = await readBody(req); const created = await createProject(root, { name: body.name, language: body.language || 'typescript' }); return json({ id: body.name, ...created }, 201); }
       const jm = url.pathname.match(/^\/api\/jobs\/([a-f0-9-]+)(\/cancel)?$/);
@@ -55,6 +58,7 @@ export async function startServer(options: { workspace: string; port?: number })
       safeChild(projectDir, spec.guidanceDir); safeChild(projectDir, spec.evaluation.dataset);
       const locked = guidanceMutations.has(id) || [...jobs.values()].some(j => j.project === id && ['running', 'cancelling'].includes(j.status));
       if (locked && ['POST', 'PUT', 'DELETE'].includes(req.method || '')) return json({ error: 'A job is already running for this project. Wait or cancel it first.' }, 409);
+      if (/^(quality|generation|runs)(\/|$)/.test(action)) { const extra = await qualityRequest(projectDir, action, req.method || 'GET', url, ['POST', 'PUT'].includes(req.method || '') ? await readBody(req) : {}); if (extra.handled) return json(extra.result); }
       if (!action && req.method === 'GET') {
         const guidance = await inspectGuidance(resolve(projectDir, spec.guidanceDir));
         let cases: unknown[] = [], reports: unknown[] = [], files: string[] = [];
@@ -121,14 +125,17 @@ export async function startServer(options: { workspace: string; port?: number })
         } finally { await unlink(temporary).catch(() => {}); }
       }
       if (action === 'artifact' && req.method === 'GET') { const path = safeChild(safeChild(projectDir, 'generated'), url.searchParams.get('path') || 'README.md'); const info = await lstat(path); if (info.isSymbolicLink() || info.size > 2_000_000) throw new Error('This artifact cannot be previewed.'); return json({ content: await readFile(path, 'utf8') }); }
-      if (action === 'download' && req.method === 'GET') { const base = safeChild(projectDir, 'generated'); const files = await walk(base); const entries: Record<string, Uint8Array> = {}; let total = 0; for (const f of files) { const data = await readFile(safeChild(base, f)); total += data.length; if (total > 20_000_000) throw new Error('Export exceeds 20 MB. Use the project directory directly.'); entries[`${spec.name}/${f}`] = data; } const archive = zipSync(entries); res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${id}.zip"` }); res.end(archive); return; }
-      if (['build', 'prepare', 'run', 'eval', 'refine', 'doctor'].includes(action) && req.method === 'POST') {
+      if (action === 'download' && req.method === 'GET') { const archive = await createProjectArchive(projectDir); res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${id}.zip"` }); res.end(archive.bytes); return; }
+      if (['build', 'prepare', 'run', 'eval', 'refine', 'doctor', 'record', 'resume', 'replay'].includes(action) && req.method === 'POST') {
         const body = await readBody(req); const job: Job = { id: randomUUID(), project: id, kind: action, status: 'running', startedAt: new Date().toISOString(), controller: new AbortController() }; jobs.set(job.id, job);
         const task = async () => {
-          if (action === 'build') return buildProject(manifest, join(projectDir, 'generated'), true);
+          if (action === 'build') return buildProject(manifest, join(projectDir, 'generated'), true, { merge: !!body.merge, expectedPlanHash: body.expectedPlanHash });
+          if (action === 'record') { if (body.recordContent !== true) throw new Error('Content recording requires explicit consent.'); return startRecordedRun(spec, join(projectDir, 'generated'), body.input, { recordContent: true, caller: body.caller, tenant: body.tenant, scopes: body.scopes, signal: job.controller.signal }); }
+          if (action === 'resume') return resumeRecordedRun(spec, join(projectDir, 'generated'), body.id, { signal: job.controller.signal, caller: body.caller, tenant: body.tenant, scopes: body.scopes });
+          if (action === 'replay') return replayRun(spec, join(projectDir, 'generated'), body.id, { signal: job.controller.signal, caller: body.caller, tenant: body.tenant, scopes: body.scopes });
           if (action === 'prepare') return prepareProject(spec, join(projectDir, 'generated'), job.controller.signal);
           if (action === 'run') { if (typeof body.input !== 'string' || !body.input.trim()) throw new Error('Enter an input to run.'); return runProject(spec, join(projectDir, 'generated'), body.input, job.controller.signal); }
-          if (action === 'eval') { const cases = await readCases(resolve(projectDir, spec.evaluation.dataset)); const report = await evaluateProject(spec, join(projectDir, 'generated'), cases, { split: body.split || 'all', signal: job.controller.signal, onProgress: (done, total) => { job.progress = { done, total }; } }); await saveReport(join(projectDir, 'reports', `${Date.now()}-${report.id}.json`), report); return report; }
+          if (action === 'eval') { const cases = await readCases(resolve(projectDir, spec.evaluation.dataset)); const report = await evaluateProject(spec, join(projectDir, 'generated'), cases, { split: body.split || 'all', signal: job.controller.signal, onProgress: (done, total) => { job.progress = { done, total }; } }); await saveReport(join(projectDir, 'reports', `${Date.now()}-${report.id}.json`), report); await registerEvidenceReport(projectDir, report); return report; }
           if (action === 'refine') return refineProject(spec, await inspectGuidance(resolve(projectDir, spec.guidanceDir)), job.controller.signal);
           return Object.fromEntries(await Promise.all(Object.entries(spec.connections).map(async ([key, connection]) => [key, await diagnoseConnection(connection)])));
         };
@@ -159,7 +166,7 @@ async function validateGuidanceChange(report: GuidanceReport, path: string, cont
 async function walk(root: string, prefix = ''): Promise<string[]> {
   const files: string[] = [];
   for (const entry of await readdir(join(root, prefix), { withFileTypes: true })) {
-    if (entry.isSymbolicLink() || ['node_modules', '.venv', '__pycache__', '.git'].includes(entry.name) || entry.name === '.env' || entry.name.startsWith('.env.') && entry.name !== '.env.example') continue;
+    if (entry.isSymbolicLink() || ['node_modules', '.venv', '__pycache__', '.git', '.instrilo'].includes(entry.name) || entry.name === '.env' || entry.name.startsWith('.env.') && entry.name !== '.env.example') continue;
     const path = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) files.push(...await walk(root, path)); else files.push(path);
     if (files.length > 2000) throw new Error('Too many files to export.');

@@ -43,12 +43,15 @@ jobs:
         id: python
         with:
           python-version: '3.12'
+      - name: Install tested Python environment manager
+        run: python -m pip install uv==0.11.26
       - name: Install locked repository dependencies
         run: npm ci
       - name: Check types and build application
         run: |
           npm run check
           npm run build
+          npm run docs:check
       - name: Run all tests, including the Python CLI flow
         env:
           NB_AGENT_PYTHON: ${{ steps.python.outputs.python-path }}

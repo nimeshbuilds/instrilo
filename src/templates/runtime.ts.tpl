@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { Ajv } from 'ajv';
+import { durableEnabled, durableStep } from './session.js';
 
 export const ROOT = fileURLToPath(new URL('.', import.meta.url));
 export const SPEC = JSON.parse(readFileSync(new URL('./agent-spec.json', import.meta.url), 'utf8'));
@@ -31,6 +32,7 @@ export function validateUrl(url: string): string {
   return url;
 }
 export async function requestJson(url: string, ctx: Context, init: RequestInit = {}): Promise<any> {
+  if (process.env.INSTRILO_REPLAY === '1') throw new Error('Network dispatch is forbidden during replay');
   validateUrl(url);
   const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(CONNECTION.timeoutMs ?? 60000)]);
   const response = await fetch(url, { ...init, signal, redirect: 'error' });
@@ -60,10 +62,11 @@ export async function executeTool(name: string, args: unknown, ctx: Context): Pr
   if (!validate(args)) throw new Error('Tool input failed JSON Schema validation: ' + ajv.errorsText(validate.errors));
   if (!t.requiredScopes.every((s: string) => ctx.scopes.has(s))) throw new Error('Missing tool scopes');
   const digest = approvalDigest(name, args);
-  if (t.requiresApproval && !ctx.approvals.has(digest)) throw new Error('Approval required for exact call SHA256=' + digest);
+  if (!durableEnabled && t.requiresApproval && !ctx.approvals.has(digest)) throw new Error('Approval required for exact call SHA256=' + digest);
   if (ctx.toolCalls >= SPEC.agent.limits.maxSteps) throw new Error('Tool call budget exhausted');
   ctx.toolCalls++;
   if (t.requiresApproval) ctx.approvals.delete(digest);
+  return durableStep('tool', { name, arguments: args }, async () => {
   const url = new URL(t.url); const headers: Record<string, string> = {};
   if (t.authEnv) headers.Authorization = 'Bearer ' + await env(t.authEnv);
   const init: RequestInit = { method: t.method, headers };
@@ -72,6 +75,7 @@ export async function executeTool(name: string, args: unknown, ctx: Context): Pr
   const result = await requestJson(url.toString(), ctx, init);
   ctx.trace.push({ event: 'tool', name, approvalDigest: digest, status: 'ok' });
   return result;
+  });
 }
 async function cliPrompt(prompt: string, ctx: Context): Promise<string> {
   if (SPEC.agent.tools.length) throw new Error('CLI runtime does not implement portable HTTP tool calls');
@@ -108,6 +112,18 @@ async function cliPrompt(prompt: string, ctx: Context): Promise<string> {
   return result;
 }
 export async function modelStep(messages: any[], ctx: Context): Promise<any> {
+  const prior = { ...ctx.usage };
+  const packet = await durableStep('model', { messages }, async () => {
+    const before = { ...ctx.usage };
+    const message = await liveModelStep(messages, ctx);
+    return { message, usageKnown: ctx.usageKnown, usage: { inputTokens: ctx.usage.inputTokens - before.inputTokens, outputTokens: ctx.usage.outputTokens - before.outputTokens } };
+  });
+  ctx.usageKnown = packet.usageKnown;
+  ctx.usage = { inputTokens: prior.inputTokens + packet.usage.inputTokens, outputTokens: prior.outputTokens + packet.usage.outputTokens };
+  // Recorded usage describes the original response; replay never bills a provider.
+  return packet.message;
+}
+async function liveModelStep(messages: any[], ctx: Context): Promise<any> {
   ctx.signal.throwIfAborted(); const kind = CONNECTION.kind;
   if (kind === 'demo') return { role: 'assistant', content: '[DEMO ONLY] ' + String(messages.at(-1).content) };
   if (['codex-cli', 'claude-code', 'grok-cli'].includes(kind)) return { role: 'assistant', content: await cliPrompt(String(messages.at(-1).content), ctx) };

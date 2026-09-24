@@ -15,7 +15,7 @@ npm test
 
 The automated suite invokes no paid model API and no authenticated provider-CLI inference. Some integration tests download public runtime dependencies into temporary project directories; they are free of live model calls, not necessarily free of network access.
 
-Final repository verification: **58/58 tests passed, with no skips**, using the explicit bundled Python interpreter. TypeScript checking and the application build also passed.
+The 0.1 baseline passed 58 tests. The 0.2 verification now includes requirements/release policy, review/calibration, safe regeneration, trusted adapters, durable native/LangGraph runs, portable replay, and extensive CLI/app flows. The final integrated run passed **139/139 tests, with no skips**, using an explicit Python interpreter and uv. TypeScript checking, the application build, and the generated CLI-documentation consistency check also passed.
 
 The September 24 source-release check repeated the full suite after branding and package metadata changes. The renamed CLI help and local app rendered correctly with the new SVG icon and no browser console errors. The banner and vector/PNG icon were visually reviewed. Production dependency audit reported zero known vulnerabilities at that time. Cloud/provider verification below has not changed.
 
@@ -39,7 +39,7 @@ The TypeScript CLI integration uses `prepare`, not a mocked dependency installer
 NB_AGENT_PYTHON=/absolute/path/to/python3 npx tsx --test tests/workbench.test.ts tests/server.test.ts
 ```
 
-The recorded run using the bundled Python interpreter passed both language flows. The Python test creates a temporary virtual environment, installs `httpx` and `jsonschema`, and executes the generated native CLI. It verifies native execution and evaluation; it does not exercise `uv sync`, every Python service dependency, or a cloud image.
+The recorded run using the bundled Python interpreter passed both language flows. The standalone Python CLI test creates a temporary environment with `httpx` and `jsonschema`. The 0.2 durable native/LangGraph tests additionally use real `uv sync` environments and exercise model/tool recording, exact approvals, restart/resume, and offline replay. Neither test deploys a cloud image.
 
 Initial integration tests exposed duplicated CLI positional arguments, configuration defaults replacing explicit manifest language, and exports discarding user evaluation cases/rubric. Those failures were fixed and regression tests passed. Later guidance editing tests verify successful saves, stale digest rejection without overwriting current content, secret/binary/size/conflict rejection, and unique clarification files.
 
@@ -104,10 +104,27 @@ No deployment command or cloud resource creation is necessary to run the automat
 
 The app is a loopback-bound local workbench with a session token. Its token is not an enterprise login or tenant administration system. Generated services can enforce inbound JWT and scoped tools, but a tenant claim requires resource-specific authorization in each real adapter. Guidance and prompts do not grant permissions.
 
-The starter enforces exact-call approval digests but does not include a durable approval inbox or a single-use approval ledger. It does not implement a persistent workflow checkpointer, cross-process resume, a managed deployment control plane, autoscaling policy, or a complete hosted multi-tenant sandbox service.
+Recorded native/LangGraph runs now persist operation events, approval decisions and single-use claims, with process-restart resume and reconciliation for ambiguous side effects in both languages. This is an operation journal for those runtimes, not an arbitrary framework checkpoint engine. SDK-framework durability, hosted reviewer identity, managed cloud provisioning, autoscaling, and multi-tenant sandbox services remain outside the current implementation.
 
 Guidance conflict detection is bounded and partly syntactic. It catches explicit matching ALLOW/DENY directives and flags differing recognized sections, but it does not prove arbitrary requirements are semantically consistent. Recognizable secret patterns are excluded; this is not complete sensitive-data detection.
 
-The default dataset contains synthetic development cases. Demo reports can pass plumbing checks while proving nothing about an LLM's task quality. Live judge scores also require calibration; a threshold alone is not evidence of reliability. Dataset and judge hashes help identify changed conditions but do not provide statistical confidence or an immutable audit log.
+The default dataset contains synthetic development cases. Demo reports can pass plumbing checks while proving nothing about an LLM's task quality. Live judge scores also require calibration; a threshold alone is not evidence of reliability. Version-bound reports and append-only review labels identify changed conditions. The local OS owner can still alter files, so these are not independently signed attestations or a statistically established quality claim.
 
 Use the [full product specification](PRODUCT-SPEC.md) for intended scope and roadmap, [README](../README.md) for working local commands, and [deployment notes](DEPLOYMENT.md) for destination-specific prerequisites.
+
+## 0.2 local workflow verification
+
+All provider/model/tool data in these additions comes from explicit test fixtures. No new paid provider, subscription, cloud, or desktop-account verification is implied.
+
+| Tests | Exercised failure modes |
+| --- | --- |
+| `evidence.test.ts`, `review.test.ts`, `cli-evidence.test.ts` | Stale requirement/source/case/rubric bindings; unreviewed links; holdout, demo and synthetic policy decisions; blind queues; corrections; disagreements; human/judge calibration; actual CLI release exit codes |
+| `regeneration.test.ts` | Retained baselines; user edits; three-way merge/conflicts; transaction interruption/recovery; concurrent locks; changed plan hashes; old-build migration and dependency-lock provenance |
+| `runs.test.ts` | Native/LangGraph Python and TypeScript pause/restart/approval/replay against local fixtures; exact caller/tenant/scopes; expiry, denial and single claim; ambiguous write reconciliation; redaction; observed graphs; portable bundles and zero-live-fallback replay; unowned source and runtime helper changes; lock recovery |
+| `adapters.test.ts` | Pinned bundles and tampering; trusted install; interface conformance; bounded input/output/time; cancellation and descendant cleanup; reserved environment isolation; redaction; authenticated HTTP bridge; registry/build concurrency |
+| `cli-operations.test.ts`, `cli-help.test.ts`, `cli-deps.test.ts` | Actual CLI configuration/connection/tool/case/guidance changes; backup and hash checks; prototype/cyclic/oversized inputs; coherent export; every command's help metadata and offline manual discovery; package-manager timeout/SIGINT and generated-runtime cancellation; concurrent builder-edit refusal |
+| `server-quality.test.ts` | HTTP auth/Origin/Host; read-only GET; evidence registration; blind review and release; generation previews; approval inspection; mutation conflicts; stale/tampered/locked export refusal and private history exclusion |
+
+The 0.2 framework smoke re-used isolated installed SDK environments and passed **98 assertions across all seven framework variants**, with 20 localhost model requests. The remote MCP smoke re-used native Python/TypeScript SDK environments and passed **35 assertions**. These repeats exercised the changed generated session/runtime templates; they were not fresh dependency installations.
+
+Browser QA exercised project creation, exact-plan build application, dependency preparation, demo evaluation, a reviewed requirement, a bound blind human label, the default release gate rejecting demo/synthetic evidence, recorded history, and frozen replay. Report selection clears stale review controls, and changing merge mode invalidates the displayed generation plan. Browser QA is limited to the local in-app browser; its console contained no errors in the inspected flow. Production dependency audit reported zero known vulnerabilities at verification time.

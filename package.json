@@ -1,6 +1,6 @@
 {
   "name": "@nimeshbuilds/instrilo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Build with intent. Ship with evidence. Guidance-driven agent creation for Python and TypeScript.",
@@ -14,7 +14,9 @@
     "start": "node dist/cli.js app",
     "cli": "tsx src/cli.ts",
     "test": "tsx --test tests/*.test.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "docs:cli": "node scripts/generate-cli-docs.mjs",
+    "docs:check": "node scripts/generate-cli-docs.mjs --check"
   },
   "engines": {
     "node": ">=22"
