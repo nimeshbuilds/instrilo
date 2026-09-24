@@ -1,6 +1,75 @@
 import { Command } from 'commander';
 
 export const manuals:Record<string,{title:string;body:string}>={
+ subscriptions:{title:'Guided subscription CLI installation and sign-in',body:`Use the official Codex, Claude Code or Grok Build CLI through your own account.
+Instrilo discovers tools, offers installation, starts official sign-in and checks
+credential status. It never reads provider credential files or asks for passwords.
+These commands also work as in in zsh, or command in in Bash/POSIX sh.
+
+  instrilo setup codex
+  instrilo setup grok --device
+  instrilo auth status
+  instrilo auth status claude
+  instrilo auth install claude --plan
+  instrilo auth install claude --yes
+  instrilo auth login codex --install --yes --device
+  instrilo auth login claude
+  instrilo auth verify grok
+  instrilo connect claude ./my-agent --role judge
+  instrilo connect codex ./my-agent --role builder --connection planning
+  instrilo connect grok ./my-agent --role all --yes
+
+setup without a provider asks in a terminal. --yes approves the displayed fixed
+official npm installation and starting login; account consent stays in the
+provider's browser/device flow. No login or installation is done by auth status.
+auth login always starts login, including when credentials already exist.
+--install offers installation only if missing. --device works for Codex/Grok;
+Claude uses its normal browser flow and may require terminal input.
+
+Install requirements: Node.js >=22 and npm, macOS/Linux/WSL. Install plans name
+@openai/codex, @anthropic-ai/claude-code or @xai-official/grok, and the official
+npm registry. npm package installation runs the provider's install scripts.
+No sudo is required. Packages go under ~/.local/share/instrilo/providers.
+Set INSTRILO_PROVIDER_HOME to an absolute directory to choose another prefix.
+Instrilo and generated Python/TypeScript runtimes check absolute PATH entries,
+the managed prefix/bin, ~/.local/bin and ~/.bun/bin, in that order. An existing
+PATH installation takes precedence; inspect auth status to see the selected path.
+You do not need to edit PATH to use the managed installation through Instrilo.
+Updating: auth install PROVIDER --plan, then auth install PROVIDER --yes.
+An existing PATH binary still takes precedence after a managed package update.
+
+Codex/Claude status can report missing credentials, subscription login, API-key
+login or unknown/error. Grok currently has no supported noninteractive auth-status
+command, so installed/login-completed is explicitly unverified. Unknown formats
+stay unknown. Status never proves eligibility, quota, model access or inference.
+auth verify makes one deliberate bounded live request and can consume subscription
+allowance or API billing. No other setup command calls a model. Environment API
+keys can override subscription behavior; checks show variable names, never values.
+
+connect defaults to builder; --role judge, runtime or all selects other roles.
+It validates compatibility before setup and preserves other project settings.
+--connection names a connection; --replace explicitly permits changing its kind.
+CLI runtime roles need the native framework, local target and no HTTP tools or
+remote ChatGPT bridge. Builder and judge CLI roles work with every framework.
+After changes, rebuild before running. Concurrent config changes stop saving.
+
+In the app, open Connections & adapters to check status, review an install plan,
+sign in or choose device login. Status updates preserve Configuration drafts.
+Only trusted provider login links and contextual device codes are shown. The
+provider opens its own browser; if it requires terminal interaction, run the
+displayed instrilo auth login command. Cancel stops the local child process.
+Completed handoff details are cleared and are never saved in project files.
+
+Troubleshooting: install Node.js >=22 if npm is missing; use WSL on Windows.
+If a provider is installed but lacks current auth commands, review its path and
+update the matching installation. Device auth may need provider/workspace settings.
+Status errors and login timeouts provide a terminal fallback. Failed installation
+releases its lock so it can be retried; after a machine crash inspect the prefix's
+.install.lock and ensure no installer is running before removing an abandoned lock.
+Desktop chat apps retain their separate host setup; CLI login does not sign you
+into ChatGPT or Claude Desktop. Read instrilo explain desktop for that workflow.
+CLI runtime sessions do not support durable recorded runs. Ollama uses an existing
+local daemon and model through its API; choosing Ollama does not download a model.`},
  overview:{title:'Instrilo: the complete agent workflow',body:`Instrilo turns product guidance into owned Python or TypeScript agent projects.
 The local app and CLI share agent-studio.yaml, guidance, generated source and evals.
 The installed commands instrilo, in and nb-agent invoke the same CLI.
@@ -183,21 +252,6 @@ claim is identity context, not automatic row-level filtering in arbitrary tools.
 adapters serve can expose a trusted provider extension locally behind a bearer
 token. Point a gateway connection at its /v1 URL. That loopback process must remain
 running and is not automatically reachable from a deployed cloud container.`},
- subscriptions:{title:'Claude, Codex, Grok and local model choices',body:`Installed official client sessions are distinct from API credentials.
-Use auth.type none for codex-cli, claude-code and grok-cli; log in with the
-supported vendor client. No browser cookie extraction or subscription-to-API
-conversion is performed. Availability and permitted use depend on the vendor.
-
-  instrilo connections example codex-cli
-  instrilo connections add coding PROJECT --data '{"kind":"codex-cli","auth":{"type":"none"}}'
-  instrilo connections use builder coding PROJECT
-
-CLI runtime sessions require native framework, local target, no portable HTTP
-tools, and no remote ChatGPT bridge. They are not supported for durable recorded
-runs. Builder and judge can independently use supported CLI sessions.
-Ollama uses a locally installed daemon/model through its compatible API; selecting
-it does not download a model. API providers require explicit API credentials.
-Use explain desktop for chat clients: a desktop host is not the model connection.`},
  frameworks:{title:'Framework and language compatibility',body:`  instrilo adapters catalog
   instrilo connections add live PROJECT --data '{"kind":"openai","model":"YOUR_MODEL","auth":{"type":"api-key","env":"OPENAI_API_KEY"}}'
   instrilo connections use runtime live PROJECT
@@ -478,7 +532,65 @@ forwarded credentials. Passing these is not live-provider/SDK/security certifica
 --trust-code means trusted local executable code: environment forwarding is
 allowlisted, but plugins can access their OS user's filesystem/network. This is
 not a plugin sandbox. Review source before installing any third-party extension.`},
- deployment:{title:'Local, Docker, AgentCore, Cloud Run and Azure delivery',body:`  instrilo config set delivery.target aws-agentcore PROJECT
+ deployment:{title:'Platform prerequisites, local tests, cleanup and cloud delivery',body:`Inspect requirements and test your generated deployment before publishing:
+
+  instrilo deployment platforms
+  instrilo deployment guide PROJECT
+  instrilo deployment prerequisites PROJECT --engine docker
+  instrilo deployment engine status
+  instrilo deployment engine install podman
+  instrilo deployment engine install podman --execute
+  instrilo deployment engine start podman
+  instrilo deployment engine start podman --execute
+  instrilo deployment test PROJECT --engine podman
+  instrilo deployment test PROJECT --engine podman --execute
+  instrilo deployment reports PROJECT
+  instrilo deployment cleanup RUN_ID PROJECT
+  instrilo deployment cleanup RUN_ID PROJECT --execute
+  instrilo deployment engine cleanup podman
+  instrilo deployment engine cleanup podman --execute
+
+Every install/start/test/cleanup command previews its plan by default. --execute
+authorizes that operation. Test execution may download public base images and
+runtime packages and use local CPU/disk. It does not provision a cloud service or
+call a paid model. Build first, then inspect the test plan and selected engine.
+--keep retains test resources for inspection; otherwise cleanup runs after the
+test, including failures. JSON and Markdown evidence remain in the project's
+.instrilo/deployment-tests directory. Read the report's actual checks, mocks,
+unverified requirements and cleanup results; a local pass is not cloud validation.
+
+Tests exercise the generated Dockerfile, selected language/framework and HTTP
+server with fixture model and identity services. No real provider credentials
+are supplied. Reports state which services were mocked and which cloud behavior
+still needs verification, including IAM, secret-manager access, regions and quota.
+An unavailable engine or unsupported architecture/emulation is a failed prerequisite,
+not a simulated pass. AWS tests require ARM64; Cloud Run/Azure require AMD64.
+Native local projects without a container target should use run/eval instead.
+
+Engine status distinguishes a CLI binary from a reachable container server.
+Install plans are OS-specific. Supported automatic steps require --execute;
+privileged Linux/WSL setup and other unsupported steps give official instructions.
+macOS Podman uses an explicitly started named machine owned by Instrilo. Docker
+Desktop may need its own first-launch/license acceptance. Instrilo does not
+silently start or remove another application's VM or change your default context.
+
+Test cleanup removes only recorded IDs with matching run ownership labels.
+Dependency cleanup is separate and opt-in: it requires installation ownership,
+checks for shared resources and refuses to uninstall a pre-existing/shared runtime.
+For an Instrilo-owned Podman VM only, --remove-machine-data previews its complete
+rootless/rootful storage inventory; add --execute to delete that exact VM disk,
+including cached base images and any other data listed. Back up wanted data first.
+No global prune command is used. Inspect retained failures and retry cleanup when
+the engine is available. Some uninstall steps remain manual when ownership or
+platform privileges cannot be safely established. Reports are preserved.
+
+In the app, open Code & delivery: prerequisites, guide, test-plan review, reports,
+engine installation/startup and cleanup are available there. Execution requires
+reviewing the displayed operation. Existing local work is kept intact.
+
+Cloud deployment remains a separate explicit step:
+
+  instrilo config set delivery.target aws-agentcore PROJECT
   instrilo build PROJECT --overwrite
   instrilo artifacts list PROJECT
   instrilo artifacts read DEPLOYMENT.md PROJECT
@@ -583,6 +695,8 @@ live quality evidence. Use --help on the exact leaf command for machine flags.`}
 config show, adapters catalog. Use config apply for related changes that would
 otherwise leave an invalid intermediate configuration.
 Missing model access: instrilo connections check PROJECT and doctor PROJECT.
+Use instrilo setup PROVIDER for missing CLI dependencies or login.
+Read instrilo explain subscriptions for install plans and live verification.
 Check named environment variables, selected model IDs and official client login.
 A presence check does not perform a billable probe.
 Stale build: generation plan, inspect differences, build --overwrite. Local edits
@@ -604,6 +718,22 @@ For bug reports include sanitized commands, versions and a metadata-only run bun
 };
 
 const examples:Record<string,string[]>={
+ 'deployment platforms':['instrilo deployment platforms'],
+ 'deployment guide':['instrilo deployment guide PROJECT'],
+ 'deployment prerequisites':['instrilo deployment prerequisites PROJECT --engine podman'],
+ 'deployment test':['instrilo deployment test PROJECT --engine docker','instrilo deployment test PROJECT --engine docker --execute','instrilo deployment test PROJECT --engine podman --execute --keep'],
+ 'deployment reports':['instrilo deployment reports PROJECT'],
+ 'deployment cleanup':['instrilo deployment cleanup RUN_ID PROJECT','instrilo deployment cleanup RUN_ID PROJECT --execute'],
+ 'deployment engine status':['instrilo deployment engine status','instrilo deployment engine status podman'],
+ 'deployment engine install':['instrilo deployment engine install podman','instrilo deployment engine install podman --execute'],
+ 'deployment engine start':['instrilo deployment engine start podman','instrilo deployment engine start podman --execute'],
+ 'deployment engine cleanup':['instrilo deployment engine cleanup podman','instrilo deployment engine cleanup podman --execute'],
+ setup:['instrilo setup codex','instrilo setup grok --device'],
+ connect:['instrilo connect claude PROJECT --role judge','instrilo connect codex PROJECT --role builder --yes'],
+ 'auth status':['instrilo auth status','instrilo auth status claude'],
+ 'auth install':['instrilo auth install codex --plan','instrilo auth install codex --yes'],
+ 'auth login':['instrilo auth login codex --device --install --yes','instrilo auth login claude'],
+ 'auth verify':['instrilo auth verify grok'],
  init:['instrilo init support-agent --language python --directory .studio/projects'],
  create:['instrilo create research-agent --guidance ./product-guidance --framework native'],
  build:['instrilo build PROJECT','instrilo build PROJECT --dry-run','instrilo build PROJECT --overwrite --merge --expected-plan HASH'],
@@ -660,10 +790,10 @@ const leafDescriptions:Record<string,string> = {
   "approvals show": "Show pending tool arguments, identity and exact approval/operation digests.",
   "approvals deny": "Deny the exact pending approval digest and persist the decision."
 };
-const argumentDescriptions:Record<string,string>={name:'project slug, or existing tool name for tools remove',directory:'source or destination directory; see command description',path:'relative file path within the selected project',previous:'previous evaluation report JSON file',current:'current evaluation report JSON file',field:'dotted manifest field such as agent.limits.maxSteps',value:'literal string, or JSON when --json is passed',id:'existing identifier for this command group; inspect its list/show command',role:'builder, runtime, or judge',provider:'provider kind from instrilo providers','run-id':'recorded run UUID from instrilo runs list',file:'bounded local input file',topic:'manual topic from instrilo explain --list'};
+const argumentDescriptions:Record<string,string>={project:'project directory or manifest; defaults to the current directory',engine:'docker or podman',name:'project slug, or existing tool name for tools remove',directory:'source or destination directory; see command description',path:'relative file path within the selected project',previous:'previous evaluation report JSON file',current:'current evaluation report JSON file',field:'dotted manifest field such as agent.limits.maxSteps',value:'literal string, or JSON when --json is passed',id:'existing identifier for this command group; inspect its list/show command',role:'builder, runtime, or judge',provider:'provider kind from instrilo providers','run-id':'recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup',file:'bounded local input file',topic:'manual topic from instrilo explain --list'};
 function commandPath(cmd:Command){const names:string[]=[];let cursor:Command|null=cmd;while(cursor.parent){names.unshift(cursor.name());cursor=cursor.parent;}return names.join(' ');}
 function allCommands(root:Command):Command[]{return [root,...root.commands.flatMap(allCommands)];}
-function topicFor(cmd:Command){const root=commandPath(cmd).split(' ')[0]||'overview';return ({config:'configuration',cases:'evaluations',reports:'evaluations',eval:'evaluations',compare:'evaluations',policy:'release',evidence:'requirements',generation:'regeneration',build:'regeneration',deps:'dependencies',prepare:'dependencies',run:'runs',deploy:'deployment',artifacts:'files',export:'files',projects:'files',doctor:'troubleshooting',providers:'connections',init:'quickstart',create:'quickstart',plan:'guidance',app:'overview'}as Record<string,string>)[root]||root;}
+function topicFor(cmd:Command){const root=commandPath(cmd).split(' ')[0]||'overview';return ({auth:'subscriptions',setup:'subscriptions',connect:'subscriptions',config:'configuration',cases:'evaluations',reports:'evaluations',eval:'evaluations',compare:'evaluations',policy:'release',evidence:'requirements',generation:'regeneration',build:'regeneration',deps:'dependencies',prepare:'dependencies',run:'runs',deploy:'deployment',artifacts:'files',export:'files',projects:'files',doctor:'troubleshooting',providers:'connections',init:'quickstart',create:'quickstart',plan:'guidance',app:'overview'}as Record<string,string>)[root]||root;}
 export function commandReference(program:Command){return allCommands(program).map(cmd=>({command:'instrilo'+(commandPath(cmd)?' '+commandPath(cmd):''),description:cmd.description(),arguments:cmd.registeredArguments.map(a=>({name:a.name(),description:a.description,required:a.required,variadic:a.variadic,default:a.defaultValue})),options:cmd.options.map(o=>({flags:o.flags,description:o.description,required:o.mandatory,default:o.defaultValue})),examples:examples[commandPath(cmd)]||[],topic:topicFor(cmd)}));}
 export function installCliHelp(program:Command){
  program.addHelpCommand(false).showHelpAfterError('Run instrilo help --all or instrilo explain troubleshooting.').showSuggestionAfterError(true);

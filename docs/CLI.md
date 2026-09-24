@@ -4,7 +4,7 @@ Generated from the CLI itself. Regenerate with `npm run docs:cli` after changing
 
 Install from source with `npm ci && npm run build && npm link`. Without linking, replace `instrilo` with `npm run cli --` in the examples. `PROJECT`, `RUN_ID`, `HASH`, and uppercase example values are placeholders.
 
-This reference contains 121 command entries (including groups and the root) and 27 offline manual topics.
+This reference contains 140 command entries (including groups and the root) and 27 offline manual topics.
 
 ```sh
 instrilo help --all
@@ -137,10 +137,105 @@ instrilo help --json
 | `instrilo approvals approve` | Approve the inspected digest once, with expiry. Resume is a separate explicit action. |
 | `instrilo approvals deny` | Deny the exact pending approval digest and persist the decision. |
 | `instrilo approvals reconcile` | Record a confirmed external result after an ambiguous operation; never repeats the external action. |
+| `instrilo setup` | Guide official CLI discovery, reviewed installation and provider-owned sign-in; no project is required. |
+| `instrilo auth` | Install, sign in, inspect or explicitly verify official subscription CLI connections. |
+| `instrilo auth status` | Print installed binaries and safe credential status for one or all providers; no model call or login. |
+| `instrilo auth install` | Install a fixed official npm package under your user account after reviewing its plan. |
+| `instrilo auth login` | Run the official interactive sign-in even if credentials exist; the provider handles your account. |
+| `instrilo auth verify` | Make one bounded live model request through the official CLI. Uses account allowance or API billing. |
+| `instrilo connect` | Set up a provider and assign a named connection to builder, runtime, judge, or all roles. |
+| `instrilo deployment` | Inspect platform requirements, test generated containers with mocks, retain evidence and clean owned resources. |
+| `instrilo deployment platforms` | List verified platform contracts, architecture, prerequisites and official references. |
+| `instrilo deployment guide` | Read the generated platform-specific prerequisite and deployment guide. Build first. |
+| `instrilo deployment prerequisites` | Inspect the selected platform contract and local container engine without changing the machine. |
+| `instrilo deployment test` | Preview or execute isolated local container contract tests with mocked model/identity/services; no cloud deployment. |
+| `instrilo deployment reports` | Read retained deployment test evidence, including mocks, actual checks and unverified cloud dependencies. |
+| `instrilo deployment cleanup` | Preview or remove only exact resources owned by a recorded deployment test; preserve its report. |
+| `instrilo deployment engine` | Check Docker/Podman, review installation/startup, or clean up dependencies Instrilo owns. |
+| `instrilo deployment engine status` | Check one or both official container clients and server readiness without starting anything. |
+| `instrilo deployment engine install` | Review platform-specific prerequisites and install a supported official runtime with explicit consent. |
+| `instrilo deployment engine start` | Review and start supported runtime dependencies; owned Podman machines are separate from existing machines. |
+| `instrilo deployment engine cleanup` | Review removal of dependencies Instrilo owns; pre-existing or shared dependencies are preserved. |
 | `instrilo help` | Read nested command help, the complete command reference, or machine-readable command metadata. |
 | `instrilo explain` | Read the built-in operational manual without opening a browser. |
 
 ## Operational manual
+
+### Guided subscription CLI installation and sign-in
+
+Available offline: `instrilo explain subscriptions`.
+
+```text
+Use the official Codex, Claude Code or Grok Build CLI through your own account.
+Instrilo discovers tools, offers installation, starts official sign-in and checks
+credential status. It never reads provider credential files or asks for passwords.
+These commands also work as in in zsh, or command in in Bash/POSIX sh.
+
+  instrilo setup codex
+  instrilo setup grok --device
+  instrilo auth status
+  instrilo auth status claude
+  instrilo auth install claude --plan
+  instrilo auth install claude --yes
+  instrilo auth login codex --install --yes --device
+  instrilo auth login claude
+  instrilo auth verify grok
+  instrilo connect claude ./my-agent --role judge
+  instrilo connect codex ./my-agent --role builder --connection planning
+  instrilo connect grok ./my-agent --role all --yes
+
+setup without a provider asks in a terminal. --yes approves the displayed fixed
+official npm installation and starting login; account consent stays in the
+provider's browser/device flow. No login or installation is done by auth status.
+auth login always starts login, including when credentials already exist.
+--install offers installation only if missing. --device works for Codex/Grok;
+Claude uses its normal browser flow and may require terminal input.
+
+Install requirements: Node.js >=22 and npm, macOS/Linux/WSL. Install plans name
+@openai/codex, @anthropic-ai/claude-code or @xai-official/grok, and the official
+npm registry. npm package installation runs the provider's install scripts.
+No sudo is required. Packages go under ~/.local/share/instrilo/providers.
+Set INSTRILO_PROVIDER_HOME to an absolute directory to choose another prefix.
+Instrilo and generated Python/TypeScript runtimes check absolute PATH entries,
+the managed prefix/bin, ~/.local/bin and ~/.bun/bin, in that order. An existing
+PATH installation takes precedence; inspect auth status to see the selected path.
+You do not need to edit PATH to use the managed installation through Instrilo.
+Updating: auth install PROVIDER --plan, then auth install PROVIDER --yes.
+An existing PATH binary still takes precedence after a managed package update.
+
+Codex/Claude status can report missing credentials, subscription login, API-key
+login or unknown/error. Grok currently has no supported noninteractive auth-status
+command, so installed/login-completed is explicitly unverified. Unknown formats
+stay unknown. Status never proves eligibility, quota, model access or inference.
+auth verify makes one deliberate bounded live request and can consume subscription
+allowance or API billing. No other setup command calls a model. Environment API
+keys can override subscription behavior; checks show variable names, never values.
+
+connect defaults to builder; --role judge, runtime or all selects other roles.
+It validates compatibility before setup and preserves other project settings.
+--connection names a connection; --replace explicitly permits changing its kind.
+CLI runtime roles need the native framework, local target and no HTTP tools or
+remote ChatGPT bridge. Builder and judge CLI roles work with every framework.
+After changes, rebuild before running. Concurrent config changes stop saving.
+
+In the app, open Connections & adapters to check status, review an install plan,
+sign in or choose device login. Status updates preserve Configuration drafts.
+Only trusted provider login links and contextual device codes are shown. The
+provider opens its own browser; if it requires terminal interaction, run the
+displayed instrilo auth login command. Cancel stops the local child process.
+Completed handoff details are cleared and are never saved in project files.
+
+Troubleshooting: install Node.js >=22 if npm is missing; use WSL on Windows.
+If a provider is installed but lacks current auth commands, review its path and
+update the matching installation. Device auth may need provider/workspace settings.
+Status errors and login timeouts provide a terminal fallback. Failed installation
+releases its lock so it can be retried; after a machine crash inspect the prefix's
+.install.lock and ensure no installer is running before removing an abandoned lock.
+Desktop chat apps retain their separate host setup; CLI login does not sign you
+into ChatGPT or Claude Desktop. Read instrilo explain desktop for that workflow.
+CLI runtime sessions do not support durable recorded runs. Ollama uses an existing
+local daemon and model through its API; choosing Ollama does not download a model.
+```
 
 ### Instrilo: the complete agent workflow
 
@@ -372,28 +467,6 @@ claim is identity context, not automatic row-level filtering in arbitrary tools.
 adapters serve can expose a trusted provider extension locally behind a bearer
 token. Point a gateway connection at its /v1 URL. That loopback process must remain
 running and is not automatically reachable from a deployed cloud container.
-```
-
-### Claude, Codex, Grok and local model choices
-
-Available offline: `instrilo explain subscriptions`.
-
-```text
-Installed official client sessions are distinct from API credentials.
-Use auth.type none for codex-cli, claude-code and grok-cli; log in with the
-supported vendor client. No browser cookie extraction or subscription-to-API
-conversion is performed. Availability and permitted use depend on the vendor.
-
-  instrilo connections example codex-cli
-  instrilo connections add coding PROJECT --data '{"kind":"codex-cli","auth":{"type":"none"}}'
-  instrilo connections use builder coding PROJECT
-
-CLI runtime sessions require native framework, local target, no portable HTTP
-tools, and no remote ChatGPT bridge. They are not supported for durable recorded
-runs. Builder and judge can independently use supported CLI sessions.
-Ollama uses a locally installed daemon/model through its compatible API; selecting
-it does not download a model. API providers require explicit API credentials.
-Use explain desktop for chat clients: a desktop host is not the model connection.
 ```
 
 ### Framework and language compatibility
@@ -767,11 +840,69 @@ allowlisted, but plugins can access their OS user's filesystem/network. This is
 not a plugin sandbox. Review source before installing any third-party extension.
 ```
 
-### Local, Docker, AgentCore, Cloud Run and Azure delivery
+### Platform prerequisites, local tests, cleanup and cloud delivery
 
 Available offline: `instrilo explain deployment`.
 
 ```text
+Inspect requirements and test your generated deployment before publishing:
+
+  instrilo deployment platforms
+  instrilo deployment guide PROJECT
+  instrilo deployment prerequisites PROJECT --engine docker
+  instrilo deployment engine status
+  instrilo deployment engine install podman
+  instrilo deployment engine install podman --execute
+  instrilo deployment engine start podman
+  instrilo deployment engine start podman --execute
+  instrilo deployment test PROJECT --engine podman
+  instrilo deployment test PROJECT --engine podman --execute
+  instrilo deployment reports PROJECT
+  instrilo deployment cleanup RUN_ID PROJECT
+  instrilo deployment cleanup RUN_ID PROJECT --execute
+  instrilo deployment engine cleanup podman
+  instrilo deployment engine cleanup podman --execute
+
+Every install/start/test/cleanup command previews its plan by default. --execute
+authorizes that operation. Test execution may download public base images and
+runtime packages and use local CPU/disk. It does not provision a cloud service or
+call a paid model. Build first, then inspect the test plan and selected engine.
+--keep retains test resources for inspection; otherwise cleanup runs after the
+test, including failures. JSON and Markdown evidence remain in the project's
+.instrilo/deployment-tests directory. Read the report's actual checks, mocks,
+unverified requirements and cleanup results; a local pass is not cloud validation.
+
+Tests exercise the generated Dockerfile, selected language/framework and HTTP
+server with fixture model and identity services. No real provider credentials
+are supplied. Reports state which services were mocked and which cloud behavior
+still needs verification, including IAM, secret-manager access, regions and quota.
+An unavailable engine or unsupported architecture/emulation is a failed prerequisite,
+not a simulated pass. AWS tests require ARM64; Cloud Run/Azure require AMD64.
+Native local projects without a container target should use run/eval instead.
+
+Engine status distinguishes a CLI binary from a reachable container server.
+Install plans are OS-specific. Supported automatic steps require --execute;
+privileged Linux/WSL setup and other unsupported steps give official instructions.
+macOS Podman uses an explicitly started named machine owned by Instrilo. Docker
+Desktop may need its own first-launch/license acceptance. Instrilo does not
+silently start or remove another application's VM or change your default context.
+
+Test cleanup removes only recorded IDs with matching run ownership labels.
+Dependency cleanup is separate and opt-in: it requires installation ownership,
+checks for shared resources and refuses to uninstall a pre-existing/shared runtime.
+For an Instrilo-owned Podman VM only, --remove-machine-data previews its complete
+rootless/rootful storage inventory; add --execute to delete that exact VM disk,
+including cached base images and any other data listed. Back up wanted data first.
+No global prune command is used. Inspect retained failures and retry cleanup when
+the engine is available. Some uninstall steps remain manual when ownership or
+platform privileges cannot be safely established. Reports are preserved.
+
+In the app, open Code & delivery: prerequisites, guide, test-plan review, reports,
+engine installation/startup and cleanup are available there. Execution requires
+reviewing the displayed operation. Existing local work is kept intact.
+
+Cloud deployment remains a separate explicit step:
+
   instrilo config set delivery.target aws-agentcore PROJECT
   instrilo build PROJECT --overwrite
   instrilo artifacts list PROJECT
@@ -912,6 +1043,8 @@ Unknown/unsupported configuration: instrilo validate PROJECT, config fields,
 config show, adapters catalog. Use config apply for related changes that would
 otherwise leave an invalid intermediate configuration.
 Missing model access: instrilo connections check PROJECT and doctor PROJECT.
+Use instrilo setup PROVIDER for missing CLI dependencies or login.
+Read instrilo explain subscriptions for install plans and live verification.
 Check named environment variables, selected model IDs and official client login.
 A presence check does not perform a billable probe.
 Stale build: generation plan, inspect differences, build --overwrite. Local edits
@@ -3352,7 +3485,7 @@ instrilo approvals show <run-id> [project]
 
 | Argument | Required | Default | Description |
 | --- | --- | --- | --- |
-| `run-id` | yes | — | recorded run UUID from instrilo runs list |
+| `run-id` | yes | — | recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup |
 | `project` | no | . | project directory (default: current directory) |
 
 Every command also accepts `-h, --help`.
@@ -3373,7 +3506,7 @@ instrilo approvals approve <run-id> [project]
 
 | Argument | Required | Default | Description |
 | --- | --- | --- | --- |
-| `run-id` | yes | — | recorded run UUID from instrilo runs list |
+| `run-id` | yes | — | recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup |
 | `project` | no | . | project directory (default: current directory) |
 
 | Option | Required | Default | Description |
@@ -3400,7 +3533,7 @@ instrilo approvals deny <run-id> [project]
 
 | Argument | Required | Default | Description |
 | --- | --- | --- | --- |
-| `run-id` | yes | — | recorded run UUID from instrilo runs list |
+| `run-id` | yes | — | recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup |
 | `project` | no | . | project directory (default: current directory) |
 
 | Option | Required | Default | Description |
@@ -3426,7 +3559,7 @@ instrilo approvals reconcile <run-id> [project]
 
 | Argument | Required | Default | Description |
 | --- | --- | --- | --- |
-| `run-id` | yes | — | recorded run UUID from instrilo runs list |
+| `run-id` | yes | — | recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup |
 | `project` | no | . | project directory (default: current directory) |
 
 | Option | Required | Default | Description |
@@ -3444,6 +3577,428 @@ instrilo approvals reconcile RUN_ID --digest DIGEST --note NOTE --file ./INPUT.j
 ```
 
 Guide: `instrilo explain approvals`.
+
+### instrilo setup
+
+Guide official CLI discovery, reviewed installation and provider-owned sign-in; no project is required.
+
+```text
+instrilo setup [provider]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | no | — | provider kind from instrilo providers |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--yes` | no | — | approve the displayed official install plan and start provider login without Instrilo prompts |
+| `--device` | no | — | use official device login (Codex and Grok only) |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo setup codex
+instrilo setup grok --device
+```
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo auth
+
+Install, sign in, inspect or explicitly verify official subscription CLI connections.
+
+```text
+instrilo auth
+```
+
+Every command also accepts `-h, --help`.
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo auth status
+
+Print installed binaries and safe credential status for one or all providers; no model call or login.
+
+```text
+instrilo auth status [provider]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | no | — | provider kind from instrilo providers |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo auth status
+instrilo auth status claude
+```
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo auth install
+
+Install a fixed official npm package under your user account after reviewing its plan.
+
+```text
+instrilo auth install <provider>
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | yes | — | provider kind from instrilo providers |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--plan` | no | — | print exact package, registry, destination and command without installing |
+| `--yes` | no | — | consent to installing the displayed official package without an interactive prompt |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo auth install codex --plan
+instrilo auth install codex --yes
+```
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo auth login
+
+Run the official interactive sign-in even if credentials exist; the provider handles your account.
+
+```text
+instrilo auth login <provider>
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | yes | — | provider kind from instrilo providers |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--device` | no | — | use official device login (Codex and Grok only) |
+| `--install` | no | — | offer to install the official CLI if it is missing |
+| `--yes` | no | — | approve the displayed installation when --install is used |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo auth login codex --device --install --yes
+instrilo auth login claude
+```
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo auth verify
+
+Make one bounded live model request through the official CLI. Uses account allowance or API billing.
+
+```text
+instrilo auth verify <provider>
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | yes | — | provider kind from instrilo providers |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--model <id>` | no | — | explicit provider model; otherwise use the official CLI default |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo auth verify grok
+```
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo connect
+
+Set up a provider and assign a named connection to builder, runtime, judge, or all roles.
+
+```text
+instrilo connect <provider> [project]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | yes | — | provider kind from instrilo providers |
+| `project` | no | — | project directory or manifest; defaults to the current directory |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--role <role>` | no | builder | builder, runtime, judge, or all (default: builder) |
+| `--connection <name>` | no | — | connection name (default: provider ID) |
+| `--model <id>` | no | — | explicit model; otherwise retain an existing connection model or use the CLI default |
+| `--replace` | no | — | allow replacing an existing connection of a different kind |
+| `--yes` | no | — | approve the displayed official install plan and start login without Instrilo prompts |
+| `--device` | no | — | use official device login (Codex and Grok only) |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo connect claude PROJECT --role judge
+instrilo connect codex PROJECT --role builder --yes
+```
+
+Guide: `instrilo explain subscriptions`.
+
+### instrilo deployment
+
+Inspect platform requirements, test generated containers with mocks, retain evidence and clean owned resources.
+
+```text
+instrilo deployment
+```
+
+Every command also accepts `-h, --help`.
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment platforms
+
+List verified platform contracts, architecture, prerequisites and official references.
+
+```text
+instrilo deployment platforms
+```
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment platforms
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment guide
+
+Read the generated platform-specific prerequisite and deployment guide. Build first.
+
+```text
+instrilo deployment guide [project]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `project` | no | — | project directory or manifest; defaults to the current directory |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment guide PROJECT
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment prerequisites
+
+Inspect the selected platform contract and local container engine without changing the machine.
+
+```text
+instrilo deployment prerequisites [project]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `project` | no | — | project directory or manifest; defaults to the current directory |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--engine <engine>` | no | docker | docker or podman |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment prerequisites PROJECT --engine podman
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment test
+
+Preview or execute isolated local container contract tests with mocked model/identity/services; no cloud deployment.
+
+```text
+instrilo deployment test [project]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `project` | no | — | project directory or manifest; defaults to the current directory |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--engine <engine>` | no | docker | docker or podman |
+| `--execute` | no | — | build and run the reviewed local test; may download public images/dependencies |
+| `--keep` | no | — | retain run-owned resources for inspection; otherwise clean them after testing |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment test PROJECT --engine docker
+instrilo deployment test PROJECT --engine docker --execute
+instrilo deployment test PROJECT --engine podman --execute --keep
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment reports
+
+Read retained deployment test evidence, including mocks, actual checks and unverified cloud dependencies.
+
+```text
+instrilo deployment reports [project]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `project` | no | — | project directory or manifest; defaults to the current directory |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment reports PROJECT
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment cleanup
+
+Preview or remove only exact resources owned by a recorded deployment test; preserve its report.
+
+```text
+instrilo deployment cleanup <run-id> [project]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `run-id` | yes | — | recorded run UUID from instrilo runs list, or instrilo deployment reports for deployment cleanup |
+| `project` | no | — | project directory or manifest; defaults to the current directory |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--execute` | no | — | apply the reviewed cleanup after verifying recorded IDs and ownership labels |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment cleanup RUN_ID PROJECT
+instrilo deployment cleanup RUN_ID PROJECT --execute
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment engine
+
+Check Docker/Podman, review installation/startup, or clean up dependencies Instrilo owns.
+
+```text
+instrilo deployment engine
+```
+
+Every command also accepts `-h, --help`.
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment engine status
+
+Check one or both official container clients and server readiness without starting anything.
+
+```text
+instrilo deployment engine status [engine]
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `engine` | no | — | docker or podman |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment engine status
+instrilo deployment engine status podman
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment engine install
+
+Review platform-specific prerequisites and install a supported official runtime with explicit consent.
+
+```text
+instrilo deployment engine install <engine>
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `engine` | yes | — | docker or podman |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--execute` | no | — | consent to the reviewed supported operation; otherwise print its plan |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment engine install podman
+instrilo deployment engine install podman --execute
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment engine start
+
+Review and start supported runtime dependencies; owned Podman machines are separate from existing machines.
+
+```text
+instrilo deployment engine start <engine>
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `engine` | yes | — | docker or podman |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--execute` | no | — | consent to the reviewed supported operation; otherwise print its plan |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment engine start podman
+instrilo deployment engine start podman --execute
+```
+
+Guide: `instrilo explain deployment`.
+
+### instrilo deployment engine cleanup
+
+Review removal of dependencies Instrilo owns; pre-existing or shared dependencies are preserved.
+
+```text
+instrilo deployment engine cleanup <engine>
+```
+
+| Argument | Required | Default | Description |
+| --- | --- | --- | --- |
+| `engine` | yes | — | docker or podman |
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--execute` | no | — | consent to the reviewed supported operation; otherwise print its plan |
+| `--remove-machine-data` | no | — | include the entire disk of the exact Instrilo-owned Podman VM after reviewing its storage inventory |
+
+Every command also accepts `-h, --help`.
+
+```sh
+instrilo deployment engine cleanup podman
+instrilo deployment engine cleanup podman --execute
+```
+
+Guide: `instrilo explain deployment`.
 
 ### instrilo help
 

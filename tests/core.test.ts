@@ -140,6 +140,10 @@ test('hosted unauthenticated service warns and scopes require verified identity'
   assert.ok(validateSpec(spec).spec);
   spec.security.requiredScopes = ['agent:run'];
   assert.ok(codes(spec).includes('AUTHORIZATION_WITHOUT_IDENTITY'));
+  spec.delivery.target = 'aws-agentcore';
+  assert.ok(codes(spec).includes('AGENTCORE_IAM_BOUNDARY'));
+  assert.ok(!codes(spec).includes('HOSTED_WITHOUT_AUTH'));
+  assert.ok(codes(spec).includes('AUTHORIZATION_WITHOUT_IDENTITY'), 'Platform IAM does not grant application JWT scopes.');
 });
 
 test('HTTP tools reject unsafe URL schemes, credential URLs, duplicate names and invalid schemas', () => {

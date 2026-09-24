@@ -96,6 +96,7 @@ The following have not been established by repository unit tests or local model 
 - AWS AgentCore, Cloud Run, or Azure Container Apps image publication and runtime deployment.
 - Production cloud IAM/OIDC policies, secret-store access, regional availability, quotas, and costs.
 - A real ChatGPT/Claude Desktop/Codex/Claude Code client's complete connection and interaction flow.
+- Real Docker/Podman image builds and container execution for the new deployment-test harness; neither engine was installed on the implementation host. Engine lifecycle tests use explicit fake executables. Host-side HTTP fixture tests are recorded separately below.
 - Production task quality, judge calibration against a human-labeled benchmark, adversarial robustness, and operational reliability.
 
 No deployment command or cloud resource creation is necessary to run the automated tests. `deploy --execute` is an explicit external action and can create billable resources; it must not be conflated with generating or reviewing the scripts.
@@ -128,3 +129,27 @@ All provider/model/tool data in these additions comes from explicit test fixture
 The 0.2 framework smoke re-used isolated installed SDK environments and passed **98 assertions across all seven framework variants**, with 20 localhost model requests. The remote MCP smoke re-used native Python/TypeScript SDK environments and passed **35 assertions**. These repeats exercised the changed generated session/runtime templates; they were not fresh dependency installations.
 
 Browser QA exercised project creation, exact-plan build application, dependency preparation, demo evaluation, a reviewed requirement, a bound blind human label, the default release gate rejecting demo/synthetic evidence, recorded history, and frozen replay. Report selection clears stale review controls, and changing merge mode invalidates the displayed generation plan. Browser QA is limited to the local in-app browser; its console contained no errors in the inspected flow. Production dependency audit reported zero known vulnerabilities at verification time.
+
+## Guided onboarding and platform testing
+
+The final integrated local run passed **207/207 tests, with no skips**, including the explicit Python CLI flow. TypeScript checking, the production build, generated CLI-documentation consistency and browser-script syntax checks also passed.
+
+Added September 24, 2026. Provider onboarding tests use isolated official-command fixtures: reviewed installation consent, fixed package/argv selection, login and status, unknown Grok status, bounded and redacted browser/device handoff, cancellation, process-tree cleanup, project-role preservation, concurrent-edit boundaries, and explicit live-verification dispatch. Generated TypeScript and Python runtime tests invoke all three fake provider clients through managed-directory discovery. No real account sign-in, credential-file access, provider install or paid model inference was performed.
+
+Platform descriptor/generator tests inspect architecture, generated prerequisite/runbooks, current Azure identity/schema/secrets, AgentCore permissions and pre-push validation, Cloud Run settings, and Compose architecture. Container dependency tests use fake Docker/Podman/Homebrew executables and isolated ownership receipts. They exercise explicit consent, setup/startup, local endpoint restrictions, VM identity, refusal to adopt existing installations, empty-storage cleanup and explicit whole-owned-VM-disk cleanup.
+
+Deployment lifecycle tests use fake engines to exercise actual orchestration, generated-artifact fingerprints, architecture verification, isolated fixture configuration, reports, failures, cancellation, resource ownership, retention and cleanup. Changed engine endpoints and unavailable sockets cannot be mistaken for successful resource removal. These tests cannot establish that a real engine built or ran an image. The optional host fixture smoke separately passed **70 HTTP/JWT/model-fixture assertions across all seven Python/TypeScript framework variants**, reusing installed SDK environments. Repeat it after preparing dependencies with the generator smoke above:
+
+```sh
+AGENT_SMOKE_ROOT=/tmp/nb-agent-smoke node --import tsx tests/deployment-runtime-smoke.mjs
+```
+
+The real-container smoke requires a running local Docker engine and is separate from `npm test`:
+
+```sh
+node --import tsx tests/deployment-container-smoke.mjs --execute
+```
+
+It builds the generated native TypeScript and Python images, executes isolated HTTP/JWT/model fixtures, and verifies removal of every recorded run-owned resource. It may download public images/dependencies and retains JSON/Markdown reports in a printed temporary workspace. CI runs this smoke on its Linux runner; inspect the commit's workflow result for actual container evidence. Other architectures/framework container builds, Podman execution and cloud deployment still require their own verification.
+
+Browser QA covered provider installation-plan review, fake install/login, device handoff and cancellation, and preservation of unsaved configuration. Deployment QA covered platform controls, local test-plan review, and a retained failed-prerequisite report when the actual host had no container engine. The failure was reported as a failure, with an installation next step and no created container resources. No cloud resource, real container runtime installation or removal was performed.

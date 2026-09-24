@@ -15,6 +15,25 @@ if GUIDANCE.strip() and GUIDANCE.strip() not in SYSTEM:
     SYSTEM += "\n\n" + GUIDANCE
 MAX_BYTES = 1024 * 1024
 
+def resolve_provider_executable(provider):
+    if provider not in ("codex", "claude", "grok"): raise ValueError("Choose codex, claude, or grok.")
+    override = os.environ.get("INSTRILO_PROVIDER_HOME")
+    if override is not None and (not override or not os.path.isabs(override) or "\0" in override):
+        raise ValueError("INSTRILO_PROVIDER_HOME must be an absolute directory path.")
+    home = Path.home()
+    managed = Path(os.path.abspath(override)) if override else home / ".local/share/instrilo/providers"
+    directories = [*os.environ.get("PATH", "").split(os.pathsep), str(managed / "bin"), str(home / ".local/bin"), str(home / ".bun/bin")]
+    names = [provider + ".exe", provider + ".cmd", provider] if os.name == "nt" else [provider]
+    for directory in dict.fromkeys(directories):
+        if not directory or not os.path.isabs(directory): continue
+        for name in names:
+            path = Path(directory) / name
+            try:
+                if os.access(path, os.X_OK) and path.is_file(): return str(path)
+            except OSError:
+                pass
+    raise RuntimeError("The " + provider + " CLI was not found. Run instrilo setup " + provider + " to install and sign in.")
+
 def env(name):
     value = os.environ.get(name or "", "")
     # AWS_SECRET_RESOLUTION
@@ -119,6 +138,10 @@ async def live_model_step(messages, ctx):
             "grok-cli": ["grok", "--output-format", "json", "--tools", "", "--deny", "*", "--disable-web-search", "--no-subagents", "--no-memory", "--permission-mode", "dontAsk", "--max-turns", "1"]}
         prompt = SYSTEM + "\n\nUse only the supplied text. Do not execute tools, inspect files or change the environment.\n\n" + str(messages[-1].get("content", ""))
         command = commands[kind]
+        provider = command[0]
+        command[0] = resolve_provider_executable(provider)
+        if os.name == "nt" and command[0].lower().endswith(".cmd"):
+            raise RuntimeError("Use WSL and run instrilo setup " + provider + " for npm command shims. No shell command is run automatically.")
         if CONNECTION.get("model"): command += ["--model", CONNECTION["model"]]
         if kind == "grok-cli": command += ["-p", prompt]
         child = await asyncio.create_subprocess_exec(*command, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=ROOT, start_new_session=(os.name != "nt"))

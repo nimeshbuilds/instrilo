@@ -156,7 +156,8 @@ export function validateSpec(input: unknown): { spec?: ProjectSpec; issues: Issu
       }
     }
   } else {
-    if (spec.delivery.target !== 'local') add('warning', 'HOSTED_WITHOUT_AUTH', 'This hosted target has no inbound authentication. Configure JWT and authorization before exposing it.', 'security.inbound.mode');
+    if (spec.delivery.target === 'aws-agentcore') add('info', 'AGENTCORE_IAM_BOUNDARY', 'This AgentCore artifact uses platform IAM authentication. Deploy behind the authenticated AgentCore endpoint; use JWT for an independently exposed container.', 'security.inbound.mode');
+    else if (spec.delivery.target !== 'local') add('warning', 'HOSTED_WITHOUT_AUTH', 'This hosted target has no inbound authentication. Configure JWT and authorization before exposing it.', 'security.inbound.mode');
     if (spec.security.requiredScopes.length || spec.security.tenantClaim || spec.agent.tools.some(t => t.requiredScopes.length)) add('error', 'AUTHORIZATION_WITHOUT_IDENTITY', 'Scope or tenant authorization requires inbound JWT authentication.', 'security');
   }
   const toolNames = new Set<string>();

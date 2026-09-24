@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+- Platform-specific deployment contracts and detailed prerequisite/runbooks for local, Docker, AgentCore, Cloud Run and Azure Container Apps; corrected Azure managed-identity bootstrap and platform architecture handling.
+- Optional Docker/Podman deployment contract tests with isolated fixture services, target-architecture checks, retained JSON/Markdown evidence, cancellation and ownership-checked cleanup.
+- Container engine inspection, reviewed platform setup/startup and explicit cleanup of owned dependencies, available through the comprehensive CLI and Code & delivery app workspace.
+
 - Add `in` as a CLI executable alias for `instrilo`, alongside `nb-agent`; document `command in` for Bash/POSIX sh.
+- Guided Codex, Claude Code and Grok Build onboarding in the CLI and app: reviewed official package installation, provider-owned browser/device login, credential-status checks, cancellation and terminal fallback.
+- Add `setup`, `auth status/install/login/verify`, and `connect` with independent project roles, compatibility validation and concurrent-edit protection; expand the offline manual and complete CLI reference.
+- Discover user-managed provider installations in builder/judge transports and generated Python/TypeScript runtimes. Distinguish installation, login, subscription credentials and an explicit live verification request.
 
 ## 0.2.0 — 2026-09-24
 

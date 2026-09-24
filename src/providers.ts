@@ -1,3 +1,4 @@
+import { inspectSubscription, resolveProviderExecutable, providerId, type SubscriptionStatus } from './subscriptions.js';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { Connection, GenerateRequest, GenerateResponse, ProviderCapability, ProviderKind } from './types.js';
@@ -235,9 +236,11 @@ export async function generate(connection: Connection, request: GenerateRequest)
   if (CLI_KINDS.has(connection.kind)) {
     if (connection.auth.type !== 'none') throw new Error('CLI connections use the official CLI login; configure auth.type as none. Use an API provider for explicit credentials.');
     const invocation = buildCliInvocation(connection.kind, request);
+    const executable = await resolveProviderExecutable(connection.kind);
+    if (!executable) throw new Error(`The official CLI is missing. Run instrilo setup ${providerId(connection.kind)} to install it and sign in.`);
     if (connection.model) invocation.args.push('--model', connection.model);
     let result: ReturnType<typeof parseCliOutput>;
-    try { result = parseCliOutput(connection.kind, await runProcess(invocation.command, invocation.args, invocation.stdin, signal, request.cwd)); }
+    try { result = parseCliOutput(connection.kind, await runProcess(executable, invocation.args, invocation.stdin, signal, request.cwd)); }
     catch (error) { if (signal.aborted) throw new Error('Provider request cancelled or timed out.'); throw error; }
     return { ...result, model: result.model ?? connection.model ?? 'cli-default', provider: connection.kind, durationMs: Date.now() - started };
   }
@@ -263,16 +266,15 @@ export async function generate(connection: Connection, request: GenerateRequest)
   return { text, model: typeof data.model === 'string' ? data.model : model, provider: connection.kind, usage: usage(data.usage), durationMs: Date.now() - started };
 }
 
-/** Configuration-only diagnostics. Does not exchange tokens or call a model. */
-export async function diagnoseConnection(connection: Connection): Promise<{ ok: boolean; message: string }> {
+/** Configuration and official CLI credential status, without model calls. */
+export async function diagnoseConnection(connection: Connection): Promise<{ ok: boolean; message: string; setup?: SubscriptionStatus }> {
   try {
     deadline(connection);
     if (connection.kind === 'demo') return { ok: true, message: 'Offline demo is ready. It does not test a live model.' };
     if (CLI_KINDS.has(connection.kind)) {
       if (connection.auth.type !== 'none') throw new Error('CLI connections require auth.type none and the official CLI login.');
-      const { command } = buildCliInvocation(connection.kind, { system: '', prompt: 'diagnostic' });
-      await runProcess(command, ['--version'], '', AbortSignal.timeout(5000));
-      return { ok: true, message: 'Official CLI is installed. Login, quota and model access are not verified; no model request was made.' };
+      const setup = await inspectSubscription(connection.kind);
+      return { ok: setup.authentication.state === 'authenticated', message: setup.message, setup };
     }
     if (!providerCapabilities.some(provider => provider.kind === connection.kind && provider.transport === 'api')) throw new Error('Unknown provider kind.');
     apiUrl(connection);

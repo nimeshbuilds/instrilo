@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { engineRequest, deploymentRequest } from './server-deployment.js';
+import { providerDefinitions, providerId, inspectSubscription, installPlan, installSubscription, loginSubscription, type SubscriptionProgress } from './subscriptions.js';
 import { qualityRequest } from './server-quality.js';
 import { registerEvidenceReport } from './evidence.js';
 import { startRecordedRun, resumeRecordedRun, replayRun } from './runs.js';
@@ -16,12 +18,21 @@ import { createProject, listProjects, safeChild, manifestName, buildProject, ref
 import { runProject, evaluateProject, saveReport, sanitizeError, prepareProject } from './execution.js';
 import type { GuidanceAnswers, GuidanceReport } from './types.js';
 
-interface Job { id: string; project: string; kind: string; status: 'running' | 'cancelling' | 'completed' | 'failed' | 'cancelled'; progress?: { done: number; total: number }; result?: unknown; error?: string; startedAt: string; controller: AbortController }
+interface Job { id: string; project: string; kind: string; status: 'running' | 'cancelling' | 'completed' | 'failed' | 'cancelled'; provider?: string; progressMessages?: SubscriptionProgress[]; progress?: { done: number; total: number }; result?: unknown; error?: string; startedAt: string; controller: AbortController }
 async function readBody(req: http.IncomingMessage): Promise<any> { let body = ''; for await (const data of req) { body += data; if (body.length > 2_000_000) throw new Error('Request exceeds 2 MB.'); } return body ? JSON.parse(body) : {}; }
 export async function startServer(options: { workspace: string; port?: number }) {
   const root = resolve(options.workspace); await mkdir(root, { recursive: true });
   const token = randomBytes(32).toString('hex'); const jobs = new Map<string, Job>();
   const guidanceMutations = new Set<string>();
+  function startDeploymentJob(project: string, kind: string, run: (signal: AbortSignal, progress: (message: string) => void) => Promise<unknown>) {
+    if ([...jobs.values()].some(job => job.project === project && ['running','cancelling'].includes(job.status))) throw new Error('An operation is already running. Wait or cancel it before continuing.');
+    const job: Job = { id: randomUUID(), project, kind, status: 'running', progressMessages: [], startedAt: new Date().toISOString(), controller: new AbortController() }; jobs.set(job.id, job);
+    void (async () => {
+      try { job.result = await run(job.controller.signal, message => { job.progressMessages = [...(job.progressMessages || []), { type: 'message' as const, text: message }].slice(-100); }); const status = (job.result as any)?.status; job.status = job.controller.signal.aborted || status === 'cancelled' ? 'cancelled' : status === 'failed' || (job.result as any)?.complete === false ? 'failed' : 'completed'; if (job.status === 'failed') job.error = 'Local deployment checks failed. Inspect the retained test report.'; }
+      catch (error) { job.status = job.controller.signal.aborted ? 'cancelled' : 'failed'; job.error = sanitizeError(error instanceof Error ? error.message : 'Deployment operation failed.'); }
+    })();
+    return { jobId: job.id };
+  }
   const webRoot = fileURLToPath(new URL('./web/', import.meta.url));
   let activePort = options.port ?? 4317;
   function authorized(req: http.IncomingMessage) {
@@ -41,11 +52,45 @@ export async function startServer(options: { workspace: string; port?: number })
       if (!url.pathname.startsWith('/api/')) {
         if (req.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
         const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
-        if (!['index.html', 'app.js', 'style.css', 'icon.svg'].includes(file)) return json({ error: 'Not found.' }, 404);
+        if (!['index.html', 'app.js', 'deployment.js', 'style.css', 'icon.svg'].includes(file)) return json({ error: 'Not found.' }, 404);
         const content = await readFile(join(webRoot, file));
         res.writeHead(200, { 'Content-Type': file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' }); res.end(content); return;
       }
       if (!authorized(req)) return json({ error: 'Open the authenticated URL printed by instrilo app.' }, 401);
+      const enginePath = url.pathname.match(/^\/api\/container-engines(?:\/(.*))?$/);
+      if (enginePath) { const response = await engineRequest(enginePath[1] || '', req.method || 'GET', req.method === 'POST' ? await readBody(req) : {}, (kind, run) => startDeploymentJob('__container_engines__', kind, run), url.searchParams); return json(response.result, response.status); }
+      if (url.pathname === '/api/subscriptions' && req.method === 'GET') {
+        const providers = await Promise.all(providerDefinitions.map(async item => ({ ...await inspectSubscription(item.id), deviceAuth: item.deviceAuth })));
+        return json({ providers, plans: Object.fromEntries(providerDefinitions.map(item => [item.id, installPlan(item.id)])) });
+      }
+      const subscription = url.pathname.match(/^\/api\/subscriptions\/([^/]+)(?:\/(install|login))?$/);
+      if (subscription) {
+        const provider = providerId(subscription[1]), action = subscription[2];
+        if (!action && req.method === 'GET') return json({ ...await inspectSubscription(provider), deviceAuth: providerDefinitions.find(item => item.id === provider)!.deviceAuth });
+        if (!action || req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+        const body = await readBody(req);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Expected a setup options object.');
+        const allowed = action === 'install' ? ['consent'] : ['device'];
+        if (Object.keys(body).some(key => !allowed.includes(key))) throw new Error('Unsupported provider setup option.');
+        if (action === 'install' && body.consent !== true) throw new Error('Review the install plan and explicitly consent before installing.');
+        if (action === 'login' && body.device !== undefined && typeof body.device !== 'boolean') throw new Error('device must be a boolean.');
+        if (body.device && !providerDefinitions.find(item => item.id === provider)!.deviceAuth) throw new Error('This provider has no verified device-login option.');
+        if ([...jobs.values()].some(job => job.provider === provider && ['running', 'cancelling'].includes(job.status))) return json({ error: 'Provider setup is already running. Wait or cancel it first.' }, 409);
+        // Bound retained setup jobs; credentials and login handoff details are never written to disk.
+        const retained = [...jobs.values()].filter(job => job.provider && !['running', 'cancelling'].includes(job.status));
+        for (const old of retained.slice(0, Math.max(0, retained.length - 49))) jobs.delete(old.id);
+        const job: Job = { id: randomUUID(), project: '__subscriptions__', provider, kind: action, status: 'running', progressMessages: [], startedAt: new Date().toISOString(), controller: new AbortController() };
+        jobs.set(job.id, job);
+        const onProgress = (event: SubscriptionProgress) => { job.progressMessages = [...(job.progressMessages || []), event].slice(-100); };
+        void (async () => {
+          try {
+            job.result = action === 'install' ? await installSubscription(provider, { consent: true, signal: job.controller.signal, onProgress }) : await loginSubscription(provider, { device: body.device === true, stdio: 'capture', signal: job.controller.signal, onProgress });
+            job.status = job.controller.signal.aborted ? 'cancelled' : 'completed';
+          } catch (error) { job.status = job.controller.signal.aborted ? 'cancelled' : 'failed'; job.error = sanitizeError(error instanceof Error ? error.message : 'Provider setup failed.'); }
+          finally { job.progressMessages = job.progressMessages?.filter(event => event.type === 'message'); }
+        })();
+        return json({ jobId: job.id }, 202);
+      }
       if (url.pathname === '/api/meta') return json({ version: '0.2.0', workspace: root, providers: providerCapabilities, questions: guidanceQuestions, defaultSpec: defaultSpec('my-agent'), frameworks: ['native', 'langgraph', 'openai-agents', 'crewai'], targets: ['local', 'docker', 'aws-agentcore', 'cloud-run', 'azure-container-apps'] });
       if (url.pathname === '/api/projects' && req.method === 'GET') return json(await listProjects(root));
       if (url.pathname === '/api/projects' && req.method === 'POST') { const body = await readBody(req); const created = await createProject(root, { name: body.name, language: body.language || 'typescript' }); return json({ id: body.name, ...created }, 201); }
@@ -58,6 +103,7 @@ export async function startServer(options: { workspace: string; port?: number })
       safeChild(projectDir, spec.guidanceDir); safeChild(projectDir, spec.evaluation.dataset);
       const locked = guidanceMutations.has(id) || [...jobs.values()].some(j => j.project === id && ['running', 'cancelling'].includes(j.status));
       if (locked && ['POST', 'PUT', 'DELETE'].includes(req.method || '')) return json({ error: 'A job is already running for this project. Wait or cancel it first.' }, 409);
+      if (action.startsWith('deployment/')) { const response = await deploymentRequest(projectDir, action.slice('deployment/'.length), req.method || 'GET', url.searchParams, req.method === 'POST' ? await readBody(req) : {}, (kind, run) => startDeploymentJob(id, kind, run)); return json(response.result, response.status); }
       if (/^(quality|generation|runs)(\/|$)/.test(action)) { const extra = await qualityRequest(projectDir, action, req.method || 'GET', url, ['POST', 'PUT'].includes(req.method || '') ? await readBody(req) : {}); if (extra.handled) return json(extra.result); }
       if (!action && req.method === 'GET') {
         const guidance = await inspectGuidance(resolve(projectDir, spec.guidanceDir));
@@ -145,6 +191,7 @@ export async function startServer(options: { workspace: string; port?: number })
       return json({ error: 'Not found.' }, 404);
     } catch (error: any) { return json({ error: sanitizeError(error.message || String(error)) }, error.code === 'ENOENT' ? 404 : 400); }
   });
+  server.once('close', () => { for (const job of jobs.values()) if (['running', 'cancelling'].includes(job.status)) { job.status = 'cancelling'; job.controller.abort(); } });
   await new Promise<void>((res, rej) => { server.once('error', rej); server.listen(activePort, '127.0.0.1', () => { activePort = (server.address() as any).port; res(); }); });
   return { server, url: `http://127.0.0.1:${activePort}/#token=${token}`, token, port: activePort, workspace: root };
 }

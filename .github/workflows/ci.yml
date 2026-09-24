@@ -56,6 +56,8 @@ jobs:
         env:
           NB_AGENT_PYTHON: ${{ steps.python.outputs.python-path }}
         run: npm test
+      - name: Build and exercise native TypeScript and Python containers with local fixtures
+        run: node --import tsx tests/deployment-container-smoke.mjs --execute
 
   framework-smoke:
     name: Optional generated framework and MCP integration
@@ -86,6 +88,10 @@ jobs:
           NB_SMOKE_NODE_MODULES: ${{ runner.temp }}/generated-framework-smoke/typescript-native/node_modules
           NB_SMOKE_PYTHON: ${{ runner.temp }}/generated-framework-smoke/python-native/.venv/bin/python
         run: node tests/mcp-http-smoke.mjs
+      - name: Exercise deployment fixtures against all seven generated frameworks
+        env:
+          AGENT_SMOKE_ROOT: ${{ runner.temp }}/generated-framework-smoke
+        run: node --import tsx tests/deployment-runtime-smoke.mjs
       - name: Exercise remote MCP with CrewAI dependency constraints
         env:
           NB_SMOKE_NODE_MODULES: ${{ runner.temp }}/generated-framework-smoke/typescript-native/node_modules

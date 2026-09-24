@@ -27,6 +27,8 @@ The text-generation adapter does not execute API tool calls. Generated runtime i
 
 ## Existing CLI subscriptions
 
+Start with `instrilo setup codex`, `instrilo setup claude`, or `instrilo setup grok`, or use the app's **Connections & adapters** setup cards. Missing official CLIs can be installed to a reviewed user prefix; login is delegated to the provider. `instrilo connect PROVIDER PROJECT --role builder` also saves a project role assignment. Read the [installation and authentication guide](AUTHENTICATION.md) or `instrilo explain subscriptions` for every option, status semantics and troubleshooting.
+
 `codex-cli`, `claude-code` and `grok-cli` start the installed, unmodified provider binary with `shell: false`. Set `auth.type: none`; authenticate using the provider's own CLI. This application never opens or extracts the provider's credential files. It preserves the process environment, so a provider's configured API credentials can affect billing: verify the active login in the provider CLI.
 
 Use recent CLI versions. The adapters pass bounded prompt tasks through noninteractive JSON output. Codex uses its read-only sandbox, disables approval escalation and skips user configuration while retaining its own authentication. Claude disables tools and customizations using `--tools '' --safe-mode`. Grok disables built-in tools, denies tool execution, disables subagents/web access and limits the turn count. These adapters support builder/judge tasks and a local native runtime without application tools; they do not turn subscriptions into arbitrary framework API credentials. API output-token limits are enforced in requests; CLI output is byte/time bounded and the CLI controls its token budget.

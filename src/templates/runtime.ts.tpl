@@ -1,4 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { constants, readFileSync } from 'node:fs';
+import { access, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { delimiter, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -11,6 +14,23 @@ export const CONNECTION = SPEC.connections[SPEC.roles.runtime];
 const guidance = readFileSync(new URL('./guidance.md', import.meta.url), 'utf8');
 export const SYSTEM = SPEC.agent.systemPrompt + (guidance.trim() && !SPEC.agent.systemPrompt.includes(guidance.trim()) ? '\n\n' + guidance : '');
 const MAX_BYTES = 1024 * 1024;
+export async function resolveProviderExecutable(provider: string): Promise<string> {
+  if (!['codex', 'claude', 'grok'].includes(provider)) throw new Error('Choose codex, claude, or grok.');
+  const override = process.env.INSTRILO_PROVIDER_HOME;
+  if (override !== undefined && (!override || !isAbsolute(override) || override.includes('\0'))) throw new Error('INSTRILO_PROVIDER_HOME must be an absolute directory path.');
+  const home = homedir();
+  const managed = override ? resolve(override) : join(home, '.local/share/instrilo/providers');
+  const directories = [...(process.env.PATH ?? '').split(delimiter), join(managed, 'bin'), join(home, '.local/bin'), join(home, '.bun/bin')];
+  const names = process.platform === 'win32' ? [provider + '.exe', provider + '.cmd', provider] : [provider];
+  for (const directory of new Set(directories)) {
+    if (!directory || !isAbsolute(directory)) continue;
+    for (const name of names) {
+      const path = join(directory, name);
+      try { await access(path, constants.X_OK); if ((await stat(path)).isFile()) return path; } catch { /* Try the next supported install location. */ }
+    }
+  }
+  throw new Error('The ' + provider + ' CLI was not found. Run instrilo setup ' + provider + ' to install and sign in.');
+}
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validators = new Map<string, ReturnType<typeof ajv.compile>>(SPEC.agent.tools.map((t: any) => [t.name, ajv.compile(t.inputSchema)]));
 export interface Context { scopes: Set<string>; approvals: Set<string>; signal: AbortSignal; trace: unknown[]; toolCalls: number; usageKnown: boolean; usage: { inputTokens: number; outputTokens: number } }
@@ -85,6 +105,9 @@ async function cliPrompt(prompt: string, ctx: Context): Promise<string> {
     'claude-code': ['claude', '-p', '--output-format', 'json', '--tools', '', '--safe-mode', '--no-session-persistence', '--permission-mode', 'dontAsk'],
     'grok-cli': ['grok', '-p', prompt, '--output-format', 'json', '--tools', '', '--deny', '*', '--disable-web-search', '--no-subagents', '--no-memory', '--permission-mode', 'dontAsk', '--max-turns', '1'] };
   const command = commands[CONNECTION.kind];
+  const provider = command[0];
+  command[0] = await resolveProviderExecutable(provider);
+  if (process.platform === 'win32' && /\.cmd$/i.test(command[0])) throw new Error('Use WSL and run instrilo setup ' + provider + ' for npm command shims. No shell command is run automatically.');
   if (CONNECTION.model) command.push('--model', CONNECTION.model);
   ctx.signal.throwIfAborted();
   const raw = await new Promise<string>((resolve, reject) => {

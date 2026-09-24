@@ -3,6 +3,8 @@ import { Command } from 'commander';
 import { withCliCancellation } from './cli-runtime.js';
 import { registerProjectCommands } from './cli-extra.js';
 import { registerQualityCommands } from './cli-quality.js';
+import { registerSubscriptionCommands } from './cli-subscriptions.js';
+import { registerDeploymentCommands } from './cli-deployment.js';
 import { installCliHelp } from './cli-help.js';
 import { atomicProjectWrite, readTextDocument, readDocument, hashText } from './project-ops.js';
 import { withGenerationLock } from './regeneration.js';
@@ -104,10 +106,12 @@ program.command('deploy').description('Show generated delivery instructions; --e
   process.exitCode = code;
   });
 });
-program.command('app').description('Open the local web application backed by the same core as the CLI.').option('--workspace <directory>', 'project workspace', '.studio/projects').option('--port <number>', 'local HTTP port', '4317').action(async options => { const port = Number(options.port); if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid port.'); const app = await startServer({ workspace: options.workspace, port }); console.log(`\nInstrilo\n${app.url}\n\nWorkspace: ${app.workspace}\nLocal access only. Keep the session URL private.\n`); });
+program.command('app').description('Open the local web application backed by the same core as the CLI.').option('--workspace <directory>', 'project workspace', '.studio/projects').option('--port <number>', 'local HTTP port', '4317').action(async options => { const port = Number(options.port); if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid port.'); const app = await startServer({ workspace: options.workspace, port }); const stop = () => { app.server.closeAllConnections(); app.server.close(); }; process.once('SIGINT', stop); process.once('SIGTERM', stop); app.server.once('close', () => { process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop); }); console.log(`\nInstrilo\n${app.url}\n\nWorkspace: ${app.workspace}\nLocal access only. Keep the session URL private.\n`); });
 
 registerProjectCommands(program, guidance);
 registerQualityCommands(program);
+registerSubscriptionCommands(program);
+registerDeploymentCommands(program);
 installCliHelp(program);
 
 program.parseAsync().catch(error => { console.error(`Error: ${sanitizeError(error.message || String(error))}`); process.exitCode = 1; });

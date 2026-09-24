@@ -163,7 +163,7 @@ test('CLI invocations are read-only/tool-disabled and leave login to the provide
 test('installed CLI contract is exercised with fake executables, never a live model', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'nb-provider-test-'));
   const previousPath = process.env.PATH;
-  const script = `#!${process.execPath}\nif (process.argv.includes('--version')) { console.log('fixture 1.0'); } else { process.stdin.resume(); process.stdin.on('end', () => { if (process.env.NB_FAKE_HANG) setInterval(() => {}, 1000); else if (process.env.NB_FAKE_BIG) process.stdout.write('x'.repeat(5 * 1024 * 1024)); else process.stdout.write(process.env.NB_FAKE_OUTPUT || ''); }); }\n`;
+  const script = `#!${process.execPath}\nif (process.argv.includes('--version')) { console.log('fixture 1.0.0'); } else if (process.argv.includes('status')) { console.log(process.argv.includes('auth') ? JSON.stringify({loggedIn:true,authMethod:'oauth'}) : 'Logged in using ChatGPT'); } else { process.stdin.resume(); process.stdin.on('end', () => { if (process.env.NB_FAKE_HANG) setInterval(() => {}, 1000); else if (process.env.NB_FAKE_BIG) process.stdout.write('x'.repeat(5 * 1024 * 1024)); else process.stdout.write(process.env.NB_FAKE_OUTPUT || ''); }); }\n`;
   for (const command of ['codex', 'claude', 'grok']) await writeFile(join(directory, command), script, { mode: 0o755 });
   process.env.PATH = `${directory}:${previousPath}`;
   try {
@@ -172,7 +172,7 @@ test('installed CLI contract is exercised with fake executables, never a live mo
       process.env.NB_FAKE_OUTPUT = kind === 'codex-cli'
         ? '{"type":"item.completed","item":{"type":"agent_message","text":"hello"}}\n{"type":"turn.completed","usage":{"input_tokens":4,"output_tokens":2}}\n'
         : '{"type":"result","result":"hello","usage":{"input_tokens":4,"output_tokens":2}}';
-      assert.equal((await diagnoseConnection(connection)).ok, true);
+      assert.equal((await diagnoseConnection(connection)).ok, kind !== 'grok-cli');
       const output = await generate(connection, request);
       assert.equal(output.text, 'hello'); assert.deepEqual(output.usage, { inputTokens: 4, outputTokens: 2 });
       process.env.NB_FAKE_OUTPUT = kind === 'codex-cli' ? '{"type":"turn.failed","error":{"message":"do-not-echo-secret"}}' : '{"type":"result","is_error":true,"result":"do-not-echo-secret"}';

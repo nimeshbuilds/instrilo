@@ -103,6 +103,44 @@ instrilo help --json
 
 Use `config`, `connections`, `tools`, `guidance`, and `cases` to create and edit project inputs. Use `requirements`, `evidence`, `policy`, `review`, and `release` for quality decisions. Use `generation`, `deps`, `runs`, `approvals`, `adapters`, `artifacts`, `reports`, and `export` for maintenance and delivery. `explain --all` prints the full manual; `--json` supports tooling. See the [complete CLI reference](docs/CLI.md).
 
+## Guided provider setup
+
+Instrilo helps install the official Codex, Claude Code or Grok Build CLI, starts the provider's own sign-in flow, and checks credential status. Start from the terminal or **Connections & adapters** in the app:
+
+```sh
+instrilo setup codex
+instrilo auth install claude --plan
+instrilo auth login grok --install --device
+instrilo connect claude .studio/projects/support-agent --role judge
+instrilo auth status
+instrilo auth verify grok
+instrilo explain subscriptions
+```
+
+Installation requires an explicit review or `--yes` and uses a managed user directory without `sudo`. Instrilo and generated Python/TypeScript agents discover that directory automatically. Sign-in stays in the official provider CLI/browser; Instrilo never reads its credential files. `auth verify` is an explicit live request that can use subscription allowance or API billing. Grok has no supported authentication-status command, so a completed login remains unverified until a live check. See the [setup guide](docs/AUTHENTICATION.md) for device login, environment overrides, troubleshooting and platform limits.
+
+## Platform-aware deployment checks
+
+Generated projects include a dated platform contract and a detailed `DEPLOYMENT.md`: prerequisites, architecture, identity and secret setup, build/push/deploy steps, invocation, logs, troubleshooting and teardown. AgentCore uses ARM64; Cloud Run and Azure Container Apps use AMD64. Inspect the official references included with each target.
+
+```sh
+instrilo deployment prerequisites PROJECT --engine podman
+instrilo deployment guide PROJECT
+instrilo deployment engine install podman             # Review platform setup
+instrilo deployment engine install podman --execute   # Supported installation
+instrilo deployment engine start podman --execute     # Dedicated VM on macOS
+instrilo deployment test PROJECT --engine podman      # Review local test plan
+instrilo deployment test PROJECT --engine podman --execute
+instrilo deployment reports PROJECT
+instrilo deployment cleanup RUN_ID PROJECT --execute
+instrilo deployment engine cleanup podman             # Review dependency removal
+instrilo explain deployment
+```
+
+Local tests build the generated Dockerfile for the target architecture and exercise its server/framework with fixture model and identity services. JSON and Markdown reports record checkpoints, mocks, unverified cloud requirements and cleanup results. The app exposes the same workflow in **Code & delivery**. A local pass does not verify cloud IAM, real secret-manager access, account quotas or model quality.
+
+Test resources are removed automatically unless `--keep` is selected; reports remain. Cleanup verifies exact resource ownership and never runs a global prune. Removing container dependencies is a separate explicit operation: pre-existing/shared installations are preserved. For an Instrilo-owned Podman VM, `engine cleanup podman --remove-machine-data` previews deleting its entire disk, including cached images; add `--execute` only after reviewing the inventory. Docker Desktop uninstallation and privileged Linux/WSL installation steps use official manual instructions when automatic ownership or privileges cannot be established. See [deployment details](docs/DEPLOYMENT.md).
+
 ## Engineering workflows in 0.2
 
 | Workflow | What it does | Boundary |
@@ -166,7 +204,7 @@ npm run cli -- providers
 npm run cli -- doctor .studio/projects/support-agent
 ```
 
-`doctor` checks configuration, environment-variable presence, and installed CLI availability. It does not prove an API credential, model, subscription entitlement, or cloud account works. See [provider setup and current restrictions](docs/PROVIDERS.md).
+`doctor` checks configuration, environment-variable presence, installed CLIs and supported credential-status commands. It does not prove an API credential, model, subscription entitlement, or cloud account works. See [provider setup and current restrictions](docs/PROVIDERS.md).
 
 ## Evaluations and export
 
