@@ -96,7 +96,7 @@ The following have not been established by repository unit tests or local model 
 - AWS AgentCore, Cloud Run, or Azure Container Apps image publication and runtime deployment.
 - Production cloud IAM/OIDC policies, secret-store access, regional availability, quotas, and costs.
 - A real ChatGPT/Claude Desktop/Codex/Claude Code client's complete connection and interaction flow.
-- Real Docker/Podman image builds and container execution for the new deployment-test harness; neither engine was installed on the implementation host. Engine lifecycle tests use explicit fake executables. Host-side HTTP fixture tests are recorded separately below.
+- Real Podman execution, ARM64 container builds and non-native framework container builds. Neither engine was installed on the implementation host; native TypeScript/Python Docker images were subsequently built and tested on the Linux CI runner, as recorded below.
 - Production task quality, judge calibration against a human-labeled benchmark, adversarial robustness, and operational reliability.
 
 No deployment command or cloud resource creation is necessary to run the automated tests. `deploy --execute` is an explicit external action and can create billable resources; it must not be conflated with generating or reviewing the scripts.
@@ -150,6 +150,6 @@ The real-container smoke requires a running local Docker engine and is separate 
 node --import tsx tests/deployment-container-smoke.mjs --execute
 ```
 
-It builds the generated native TypeScript and Python images, executes isolated HTTP/JWT/model fixtures, and verifies removal of every recorded run-owned resource. It may download public images/dependencies and retains JSON/Markdown reports in a printed temporary workspace. CI runs this smoke on its Linux runner; inspect the commit's workflow result for actual container evidence. Other architectures/framework container builds, Podman execution and cloud deployment still require their own verification.
+It builds the generated native TypeScript and Python images, executes isolated HTTP/JWT/model fixtures, and verifies removal of every recorded run-owned resource. It may download public images/dependencies and retains JSON/Markdown reports in a printed temporary workspace. The [Linux CI run for implementation commit dd37894](https://github.com/nimeshbuilds/instrilo/actions/runs/36022224720) passed **207/207 repository tests without skips** and **32 real Docker checkpoints** across native TypeScript and Python. Both image inspections confirmed `linux/amd64`, both test reports passed, and every recorded run-owned container, image and network was removed. Other architectures/framework container builds, Podman execution and cloud deployment still require their own verification.
 
 Browser QA covered provider installation-plan review, fake install/login, device handoff and cancellation, and preservation of unsaved configuration. Deployment QA covered platform controls, local test-plan review, and a retained failed-prerequisite report when the actual host had no container engine. The failure was reported as a failure, with an installation next step and no created container resources. No cloud resource, real container runtime installation or removal was performed.
